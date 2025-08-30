@@ -1,7 +1,13 @@
 import flet as ft
 from .base_screen import BaseScreen
+from dialogalert import show_alert_dialog
 
 class CadastrarExtraScreen(BaseScreen):
+    import sys
+    import os
+    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+    from dialogalert import show_alert_dialog
+    from dialogalert import show_alert_dialog
     def get_content(self) -> ft.Control:
         # Campos do formulário
         matricula = ft.TextField(label="Matrícula", width=200, input_filter=ft.NumbersOnlyInputFilter())
@@ -125,21 +131,21 @@ class CadastrarExtraScreen(BaseScreen):
             # 1. Buscar policial_id
             policial_info = self.app.db.get_policial_by_matricula(matricula.value.strip())
             if not policial_info:
-                print("Matrícula não encontrada!")
+                show_alert_dialog(e.control.page, "Matrícula não encontrada!", success=False)
                 return
             policial_id = policial_info.get("id")
 
             # 2. Buscar data_id na tabela calendario
             data_formatada = data.value.strip()
             if len(data_formatada) != 10:
-                print("Data inválida!")
+                show_alert_dialog(e.control.page, "Data inválida!", success=False)
                 return
             partes = data_formatada.split("/")
             data_sql = f"{partes[2]}-{partes[1]}-{partes[0]}"
             query_cal = "SELECT id FROM calendario WHERE data = ?"
             result_cal = self.app.db.execute_query(query_cal, (data_sql,))
             if not result_cal:
-                print("Data não encontrada no calendário!")
+                show_alert_dialog(e.control.page, "Data não encontrada no calendário!", success=False)
                 return
             data_id = result_cal[0]["id"]
 
@@ -149,21 +155,21 @@ class CadastrarExtraScreen(BaseScreen):
             query_exist = "SELECT * FROM extras WHERE policial_id = ? AND data_id = ? AND turno = ? AND operacao = ?"
             exist = self.app.db.execute_query(query_exist, (policial_id, data_id, turno_val, operacao_val))
             if exist:
-                print("Já existe uma extra com essa combinação!")
+                show_alert_dialog(e.control.page, "Já existe uma extra com essa combinação!", success=False)
                 return
 
             # Regra 2: Diurno/Noturno não pode coexistir com operação OBLL
             query_conflict_obll = "SELECT * FROM extras WHERE policial_id = ? AND data_id = ? AND operacao = 'OBLL'"
             conflict_obll = self.app.db.execute_query(query_conflict_obll, (policial_id, data_id))
             if turno_val in ["Diurno", "Noturno"] and conflict_obll:
-                print("Já existe extra OBLL para esse policial e data!")
+                show_alert_dialog(e.control.page, "Já existe extra OBLL para esse policial e data!", success=False)
                 return
 
             # Regra 3: OBLL não pode coexistir com turno Diurno/Noturno
             query_conflict_dn = "SELECT * FROM extras WHERE policial_id = ? AND data_id = ? AND turno IN ('Diurno', 'Noturno')"
             conflict_dn = self.app.db.execute_query(query_conflict_dn, (policial_id, data_id))
             if operacao_val == "OBLL" and conflict_dn:
-                print("Já existe extra Diurno/Noturno para esse policial e data!")
+                show_alert_dialog(e.control.page, "Já existe extra Diurno/Noturno para esse policial e data!", success=False)
                 return
 
             # 4. Inserir extra
@@ -178,9 +184,9 @@ class CadastrarExtraScreen(BaseScreen):
                 inicio_val, fim_val, horas_val, operacao_val, turno_val, policial_id, data_id
             ))
             if success:
-                print("Extra gravada com sucesso!")
+                show_alert_dialog(e.control.page, "Extra gravada com sucesso!", success=True)
             else:
-                print("Erro ao gravar extra!")
+                show_alert_dialog(e.control.page, "Erro ao gravar extra!", success=False)
 
 
         # Layout do formulário em duas colunas e quatro linhas
