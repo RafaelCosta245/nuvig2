@@ -61,7 +61,7 @@ def ensure_db() -> Path:
 
 class MainApp:
     def __init__(self):
-        self.db = DatabaseManager(db_path=str(ensure_db()))
+        self.db = DatabaseManager(db_path=str(Path(__file__).parent / "assets" / "db" / "nuvig.db"))
         self.current_screen = None
         
     def main(self, page: ft.Page):
@@ -74,6 +74,10 @@ class MainApp:
             page.window_resizable = True
             page.theme_mode = ft.ThemeMode.LIGHT
             page.padding = 0
+            page.locale_configuration = ft.Locale(
+                                        language_code="pt"
+                                        )
+            #a = ft.Locale(language_code="pt")
 
             # Inicializar banco de dados
             self.db.init_database()
@@ -90,6 +94,8 @@ class MainApp:
                 "edicao_registros": __import__("screens.edicao_registros_screen", fromlist=["EdicaoRegistrosScreen"]).EdicaoRegistrosScreen(self),
                 "ferias": __import__("screens.ferias_screen", fromlist=["FeriasScreen"]).FeriasScreen(self),
                 "ausencias": __import__("screens.ausencias_screen", fromlist=["AusenciasScreen"]).AusenciasScreen(self),
+                "cadastrar_extra": __import__("screens.cadastrar_extra_screen", fromlist=["CadastrarExtraScreen"]).CadastrarExtraScreen(self),
+                "consultar_extras": __import__("screens.consultar_extras_screen", fromlist=["ConsultarExtrasScreen"]).ConsultarExtrasScreen(self),
             }
 
             # Container para o conteúdo dinâmico

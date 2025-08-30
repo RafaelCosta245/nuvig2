@@ -7,16 +7,72 @@ class ExtrasScreen(BaseScreen):
         self.current_nav = "extras"
         
     def get_content(self) -> ft.Control:
-        return ft.Container(
+        header = ft.Container(
             content=ft.Text(
-                "Bem-vindo à tela de Extras",
+                "Extras",
                 size=28,
                 weight=ft.FontWeight.BOLD,
                 color=ft.Colors.BLUE,
                 text_align=ft.TextAlign.CENTER
             ),
-            alignment=ft.alignment.center,
-            expand=True
+            padding=ft.padding.only(bottom=20),
+            alignment=ft.alignment.center
         )
+
+        def card_cadastrar_extra() -> ft.Control:
+            return ft.Container(
+                content=ft.Column(
+                    controls=[
+                        ft.Text("📝 Cadastrar Extra", size=18, weight=ft.FontWeight.BOLD),
+                        ft.Text("Agendar novo extra", size=12, color=ft.Colors.GREY),
+                        ft.Container(height=10),
+                        ft.TextButton(
+                            text="Abrir",
+                            icon=ft.Icons.ARROW_FORWARD,
+                            on_click=lambda e: self.navigate_to("cadastrar_extra"),
+                        ),
+                    ],
+                    horizontal_alignment=ft.CrossAxisAlignment.START,
+                    spacing=5,
+                ),
+                padding=ft.padding.all(16),
+                border=ft.border.all(1, ft.Colors.GREY),
+                border_radius=12,
+                bgcolor=ft.Colors.WHITE,
+                width=260,
+                height=140
+            )
+
+        def card_consultar_extras() -> ft.Control:
+            return ft.Container(
+                content=ft.Column(
+                    controls=[
+                        ft.Text("🔎 Extras Agendadas", size=18, weight=ft.FontWeight.BOLD),
+                        ft.Text("Verifique os extras já agendados", size=12, color=ft.Colors.GREY),
+                        ft.Container(height=10),
+                        ft.TextButton(
+                            text="Abrir",
+                            icon=ft.Icons.ARROW_FORWARD,
+                            on_click=lambda e: self.navigate_to("consultar_extras"),
+                        ),
+                    ],
+                    horizontal_alignment=ft.CrossAxisAlignment.START,
+                    spacing=5,
+                ),
+                padding=ft.padding.all(16),
+                border=ft.border.all(1, ft.Colors.GREY),
+                border_radius=12,
+                bgcolor=ft.Colors.WHITE,
+                width=260,
+                height=140
+            )
+
+        return ft.Column([
+            header,
+            ft.Row([
+                card_cadastrar_extra(),
+                card_consultar_extras()
+            ], spacing=30, alignment=ft.MainAxisAlignment.CENTER)
+        ], horizontal_alignment=ft.CrossAxisAlignment.CENTER)
 
 
