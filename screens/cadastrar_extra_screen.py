@@ -172,16 +172,41 @@ class CadastrarExtraScreen(BaseScreen):
                 show_alert_dialog(e.control.page, "Já existe extra Diurno/Noturno para esse policial e data!", success=False)
                 return
 
-            # 4. Inserir extra
+            # 4. Buscar intertício pelo nome usando a data informada
+            interticio_nome = ""
+            try:
+                query_interticio = (
+                    "SELECT nome FROM interticios "
+                    "WHERE date(?) BETWEEN date(data_inicial) AND date(data_final) LIMIT 1"
+                )
+                result_interticio = self.app.db.execute_query(query_interticio, (data_sql,))
+                if result_interticio and len(result_interticio) > 0:
+                    if isinstance(result_interticio[0], dict) or hasattr(result_interticio[0], "keys"):
+                        interticio_nome = result_interticio[0]["nome"]
+                    else:
+                        interticio_nome = result_interticio[0][0]
+            except Exception as e:
+                interticio_nome = ""
+
+            # 5. Inserir extra incluindo o intertício
             command = """
-                INSERT INTO extras (inicio, fim, horas, operacao, turno, policial_id, data_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO extras (inicio, fim, horas, operacao, turno, policial_id, data_id, interticio)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """
             horas_val = quant_horas.value
             inicio_val = inicio.value
             fim_val = fim.value
+            print("[DEBUG] Dados para gravar na tabela extras:")
+            print(f"inicio: {inicio_val}")
+            print(f"fim: {fim_val}")
+            print(f"horas: {horas_val}")
+            print(f"operacao: {operacao_val}")
+            print(f"turno: {turno_val}")
+            print(f"policial_id: {policial_id}")
+            print(f"data_id: {data_id}")
+            print(f"interticio: {interticio_nome}")
             success = self.app.db.execute_command(command, (
-                inicio_val, fim_val, horas_val, operacao_val, turno_val, policial_id, data_id
+                inicio_val, fim_val, horas_val, operacao_val, turno_val, policial_id, data_id, interticio_nome
             ))
             if success:
                 show_alert_dialog(e.control.page, "Extra gravada com sucesso!", success=True)

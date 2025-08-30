@@ -34,14 +34,37 @@ class ConsultarExtrasScreen(BaseScreen):
         col_data = ft.Column([txt_pesq_data, field_data], spacing=8, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
 
         txt_pesq_interticio = ft.TextButton(
-            "Selecione o Intertício",
+            "Digite o Intertício",
             style=ft.ButtonStyle(
                 color=ft.Colors.BLACK,
                 text_style=ft.TextStyle(size=12)
             ),
             on_click=lambda e: print("Intertício acionado")
         )
-        field_interticio = ft.TextField(label="Intertício", width=200)
+        import datetime
+        from database.database_manager import DatabaseManager
+
+        # Busca o intertício da data atual
+        hoje = datetime.date.today()
+        db_manager = DatabaseManager()
+        db_manager.init_database()
+        interticio_nome = ""
+        try:
+            query = (
+                "SELECT nome FROM interticios "
+                "WHERE date(?) BETWEEN date(data_inicial) AND date(data_final) LIMIT 1"
+            )
+            result = db_manager.execute_query(query, (hoje.strftime("%Y-%m-%d"),))
+            if result and len(result) > 0:
+                # Se for sqlite3.Row, acessar por nome
+                if isinstance(result[0], dict) or hasattr(result[0], "keys"):
+                    interticio_nome = result[0]["nome"]
+                else:
+                    interticio_nome = result[0][0]
+        except Exception as e:
+            interticio_nome = ""
+
+        field_interticio = ft.TextField(label="Intertício", width=200, value=interticio_nome)
         col_interticio = ft.Column([txt_pesq_interticio, field_interticio], spacing=8, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
 
         filtros_row = ft.Row([
