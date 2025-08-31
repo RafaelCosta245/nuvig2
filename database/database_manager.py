@@ -238,14 +238,14 @@ class DatabaseManager:
         return self.execute_command(command, (config_key, config_value, description))
 
     # --- Policiais ---
-    def inserir_policial(self, nome: str, qra: str, matricula: str, escala: str, situacao: str) -> bool:
+    def inserir_policial(self, nome: str, qra: str, matricula: str, escala: str, situacao: str, inicio: str, unidade: str) -> bool:
         """Insere um policial na tabela policiais"""
         try:
             command = """
-                INSERT INTO policiais (nome, qra, matricula, escala, situacao)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO policiais (nome, qra, matricula, escala, situacao, inicio, unidade)
+                VALUES (?, ?, ?, ?, ?, ?,?)
             """
-            return self.execute_command(command, (nome, qra, matricula, escala, situacao))
+            return self.execute_command(command, (nome, qra, matricula, escala, situacao, inicio, unidade))
         except Exception as e:
             print(f"Erro ao inserir policial: {e}")
             return False

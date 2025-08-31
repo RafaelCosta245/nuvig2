@@ -11,8 +11,8 @@ class ExtrasScreen(BaseScreen):
             content=ft.Text(
                 "Extras",
                 size=28,
+                color=ft.Colors.BLACK,
                 weight=ft.FontWeight.BOLD,
-                color=ft.Colors.BLUE,
                 text_align=ft.TextAlign.CENTER
             ),
             padding=ft.padding.only(bottom=20),
@@ -35,7 +35,7 @@ class ExtrasScreen(BaseScreen):
                     horizontal_alignment=ft.CrossAxisAlignment.START,
                     spacing=5,
                 ),
-                padding=ft.padding.all(16),
+                padding=ft.padding.all(8),
                 border=ft.border.all(1, ft.Colors.GREY),
                 border_radius=12,
                 bgcolor=ft.Colors.WHITE,
@@ -48,7 +48,7 @@ class ExtrasScreen(BaseScreen):
                 content=ft.Column(
                     controls=[
                         ft.Text("🔎 Extras Agendadas", size=18, weight=ft.FontWeight.BOLD),
-                        ft.Text("Verifique os extras já agendados", size=12, color=ft.Colors.GREY),
+                        ft.Text("Pesquise os extras já agendados", size=12, color=ft.Colors.GREY),
                         ft.Container(height=10),
                         ft.TextButton(
                             text="Abrir",
@@ -59,7 +59,7 @@ class ExtrasScreen(BaseScreen):
                     horizontal_alignment=ft.CrossAxisAlignment.START,
                     spacing=5,
                 ),
-                padding=ft.padding.all(16),
+                padding=ft.padding.all(8),
                 border=ft.border.all(1, ft.Colors.GREY),
                 border_radius=12,
                 bgcolor=ft.Colors.WHITE,
@@ -72,7 +72,7 @@ class ExtrasScreen(BaseScreen):
             ft.Row([
                 card_cadastrar_extra(),
                 card_consultar_extras()
-            ], spacing=30, alignment=ft.MainAxisAlignment.CENTER)
+            ], spacing=20, alignment=ft.MainAxisAlignment.CENTER)
         ], horizontal_alignment=ft.CrossAxisAlignment.CENTER)
 
 

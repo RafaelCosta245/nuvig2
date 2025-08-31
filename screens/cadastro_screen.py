@@ -27,7 +27,7 @@ class CadastroScreen(BaseScreen):
                 "Cadastros",
                 size=28,
                 weight=ft.FontWeight.BOLD,
-                color=ft.Colors.BLUE,
+                color=ft.Colors.BLACK,
                 text_align=ft.TextAlign.CENTER
             ),
             padding=ft.padding.only(bottom=20),
@@ -50,7 +50,7 @@ class CadastroScreen(BaseScreen):
                     horizontal_alignment=ft.CrossAxisAlignment.START,
                     spacing=5,
                 ),
-                padding=ft.padding.all(16),
+                padding=ft.padding.all(8),
                 border=ft.border.all(1, ft.Colors.GREY),
                 border_radius=12,
                 bgcolor=ft.Colors.WHITE,
@@ -68,31 +68,55 @@ class CadastroScreen(BaseScreen):
         card_cadastro = ft.Card(
             content=ft.Container(
                 content=ft.Column([
-                    ft.Text("Cadastro de Policial", size=20, weight=ft.FontWeight.BOLD),
-                    ft.Icon(ft.Icons.PERSON_ADD, size=40),
-                    ft.ElevatedButton("Cadastrar", on_click=self.ir_para_cadastro_policial)
+                    ft.Text("👮 Cadastrar Policial", size=18, weight=ft.FontWeight.BOLD),
+                    ft.Text("Cadastrar novo PP", size=12, color=ft.Colors.GREY),
+                    #ft.Icon(ft.Icons.PERSON_ADD, size=40),
+                    ft.TextButton(
+                        text="Abrir",
+                        icon=ft.Icons.ARROW_FORWARD,
+                        on_click=self.ir_para_cadastro_policial
+                    )
+                    #ft.ElevatedButton("Cadastrar", on_click=self.ir_para_cadastro_policial)
                 ], alignment=ft.MainAxisAlignment.CENTER),
-                padding=20,
-                width=300,
-                height=200
+                padding=ft.padding.all(8),
+                border=ft.border.all(1, ft.Colors.GREY),
+                border_radius=12,
+                bgcolor=ft.Colors.WHITE,
+                width=260,
+                height=140
             )
         )
         card_alterar = ft.Card(
             content=ft.Container(
                 content=ft.Column([
-                    ft.Text("Alterar Cadastro", size=20, weight=ft.FontWeight.BOLD),
-                    ft.Icon(ft.Icons.EDIT, size=40),
-                    ft.ElevatedButton("Alterar", on_click=self.ir_para_edicao_registros)
-                ], alignment=ft.MainAxisAlignment.CENTER),
-                padding=20,
-                width=300,
-                height=200
+                    ft.Text("📝 Alterar Cadastro", size=20, weight=ft.FontWeight.BOLD),
+                    ft.Text("Alterar dados do PP", size=12, color=ft.Colors.GREY),
+                    #ft.Icon(ft.Icons.EDIT, size=40),
+                    #ft.ElevatedButton("Alterar", on_click=self.ir_para_edicao_registros)
+                    ft.TextButton(
+                        text="Abrir",
+                        icon=ft.Icons.ARROW_FORWARD,
+                        on_click=self.ir_para_edicao_registros
+                    ),
+                ],
+                alignment=ft.MainAxisAlignment.CENTER),
+                padding=ft.padding.all(8),
+                border=ft.border.all(1, ft.Colors.GREY),
+                border_radius=12,
+                bgcolor=ft.Colors.WHITE,
+                width=260,
+                height=140
             )
         )
-        return ft.Row([
-            card_cadastro,
-            card_alterar
-        ], alignment=ft.MainAxisAlignment.CENTER)
+        return ft.Column([
+                    header,
+                    ft.Row(controls=[
+                        card_cadastro,
+                        card_alterar
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    vertical_alignment=ft.CrossAxisAlignment.START)
+])
     def ir_para_edicao_registros(self, e):
         if self.navigation_callback:
             self.navigation_callback("edicao_registros")

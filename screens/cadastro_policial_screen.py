@@ -12,16 +12,18 @@ class CadastroPolicialScreen(BaseScreen):
                 "Cadastrar Policial",
                 size=24,
                 weight=ft.FontWeight.BOLD,
-                color=ft.Colors.BLUE,
+                color=ft.Colors.BLACK,
                 text_align=ft.TextAlign.CENTER
             ),
             padding=ft.padding.only(bottom=20),
             alignment=ft.alignment.center
         )
 
-        self.campo_nome = ft.TextField(label="Nome", width=400, border_radius=8)
-        self.campo_qra = ft.TextField(label="QRA", width=200, border_radius=8)
-        self.campo_matricula = ft.TextField(label="Matrícula", width=200, border_radius=8)
+        self.campo_nome = ft.TextField(label="Nome Completo", width=410, border_radius=4)
+        self.campo_qra = ft.TextField(label="QRA", width=200, border_radius=4)
+        self.campo_matricula = ft.TextField(label="Matrícula", width=200, border_radius=4)
+        self.campo_inicio = ft.TextField(label="Último Plantão", width=200, border_radius=4)
+
 
         escala_options = ["A", "B", "C", "D", "ABC", "BCD", "CDA", "DAB", "AB", "BC", "CD", "DA"]
         self.campo_escala = ft.Dropdown(
@@ -39,11 +41,43 @@ class CadastroPolicialScreen(BaseScreen):
                 ft.dropdown.Option(key="inativo", text="Inativo"),
             ]
         )
+        unidades_options = [
+            "UP 01",
+            "UP 02",
+            "UP 03",
+            "UP 04",
+            "UP 05 - CEPIS",
+            "UP 06 - UPECT",
+            "UP SOBREIRA",
+            "UPPOO 2",
+            "UPTOC",
+            "UPF",
+            "UP IMELDA",
+            "UP AQUIRAZ",
+            "UP MAX",
+            "UPSPOl",
+            "UP STENIO GOMES",
+            "NUVIG",
+            "GAP"
+        ]
+        self.campo_unidade = ft.Dropdown(
+            label="UP",
+            width=200,
+            options=[ft.dropdown.Option(v) for v in unidades_options]
+            )
 
         botoes = ft.Row(
             controls=[
-                ft.ElevatedButton(text="Salvar", icon=ft.Icons.SAVE, bgcolor=ft.Colors.GREEN, color=ft.Colors.WHITE, on_click=self.on_salvar),
-                ft.OutlinedButton(text="Cancelar", icon=ft.Icons.CANCEL, on_click=lambda e: self.navigate_to("cadastro"))
+                ft.ElevatedButton(text="   Cadastrar   ",
+                                  icon=ft.Icons.SAVE,
+                                  bgcolor=ft.Colors.GREEN,
+                                  color=ft.Colors.WHITE,
+                                  on_click=self.on_salvar,),
+                ft.OutlinedButton(text="Cancelar",
+                                  icon=ft.Icons.CANCEL,
+                                  on_click=lambda e: self.navigate_to("cadastro")
+                                  )
+
             ],
             spacing=12,
             alignment=ft.MainAxisAlignment.CENTER
@@ -53,11 +87,15 @@ class CadastroPolicialScreen(BaseScreen):
             content=ft.Column(
                 controls=[
                     ft.Row(controls=[self.campo_nome], alignment=ft.MainAxisAlignment.CENTER),
-                    ft.Container(height=10),
+                    ft.Container(height=5),
                     ft.Row(controls=[self.campo_qra, self.campo_matricula], alignment=ft.MainAxisAlignment.CENTER, spacing=10),
-                    ft.Container(height=10),
+                    ft.Container(height=5),
                     ft.Row(controls=[self.campo_escala, self.campo_situacao], alignment=ft.MainAxisAlignment.CENTER, spacing=10),
-                    ft.Container(height=20),
+                    ft.Container(height=5),
+                    ft.Row(controls=[self.campo_inicio, self.campo_unidade],
+                           alignment=ft.MainAxisAlignment.CENTER,
+                           spacing=5),
+                    ft.Container(height=10),
                     botoes
                 ],
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER
@@ -81,6 +119,8 @@ class CadastroPolicialScreen(BaseScreen):
         matricula = (self.campo_matricula.value or "").strip()
         escala = (self.campo_escala.value or "").strip()
         situacao = (self.campo_situacao.value or "").strip().lower()
+        inicio = (self.campo_inicio.value or "").strip()
+        unidade = (self.campo_unidade.value or "").strip()
 
         if not nome:
             self.show_error("Informe o nome")
@@ -91,8 +131,20 @@ class CadastroPolicialScreen(BaseScreen):
         if not situacao:
             self.show_error("Selecione a situação")
             return
+        if not inicio:
+            self.show_error("Informe data de início do último plantão")
+            return
+        if not unidade:
+            self.show_error("Selecione a UP do policial")
+            return
 
-        sucesso = self.app.db.inserir_policial(nome=nome, qra=qra, matricula=matricula, escala=escala, situacao=situacao)
+        sucesso = self.app.db.inserir_policial(nome=nome,
+                                               qra=qra,
+                                               matricula=matricula,
+                                               escala=escala,
+                                               situacao=situacao,
+                                               inicio=inicio,
+                                               unidade=unidade)
         if sucesso:
             self.app.db.log_system_action(
                 action="cadastro_policial",

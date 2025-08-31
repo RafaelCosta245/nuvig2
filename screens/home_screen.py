@@ -8,17 +8,26 @@ class HomeScreen(BaseScreen):
         
     def get_content(self) -> ft.Control:
         """Retorna apenas o conteúdo da tela (sem navbar)"""
-        # Página em branco
+        logo_img = ft.Image(
+            src="assets/icons/logoNUVIG.png",
+            width=360,
+            height=360,
+            fit=ft.ImageFit.CONTAIN,
+        )
         content = ft.Container(
-            content=ft.Text(
-                "Bem-vindo ao Sistema NUVIG",
-                size=32,
-                weight=ft.FontWeight.BOLD,
-                color=ft.Colors.BLUE,
-                text_align=ft.TextAlign.CENTER
-            ),
+            content=ft.Column([
+                logo_img,
+                ft.Text(
+                    "Bem-vindo ao Sistema NUVIG",
+                    size=32,
+                    weight=ft.FontWeight.BOLD,
+                    color=ft.Colors.BLACK,
+                    text_align=ft.TextAlign.CENTER
+                )
+            ],
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            alignment=ft.MainAxisAlignment.CENTER),
             alignment=ft.alignment.center,
             expand=True
         )
-        
         return content
