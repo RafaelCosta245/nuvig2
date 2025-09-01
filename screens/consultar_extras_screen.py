@@ -45,8 +45,7 @@ class ConsultarExtrasScreen(BaseScreen):
 
         # Busca o intertício da data atual
         hoje = datetime.date.today()
-        db_manager = DatabaseManager()
-        db_manager.init_database()
+        db_manager = self.app.db
         interticio_nome = ""
         try:
             query = (
@@ -71,6 +70,34 @@ class ConsultarExtrasScreen(BaseScreen):
             col_interticio
         ], spacing=40, alignment=ft.MainAxisAlignment.CENTER)
 
+        # Controle para seleção única e cor de linha
+        self.selected_row_index = None
+        self.tabela_rows = []  # Guardar referências das linhas
+        def on_row_select(e):
+            row = e.control  # DataRow que disparou o evento
+            idx = None
+            # Descobrir índice da linha clicada
+            for i, r in enumerate(self.tabela_rows):
+                if r is row:
+                    idx = i
+                    break
+            if idx is None:
+                return
+            # Não permitir toggle: só marca se não estiver marcada
+            if self.selected_row_index == idx:
+                return
+            # Desmarca todas as linhas
+            for i, r in enumerate(self.tabela_rows):
+                r.selected = False
+                r.color = None
+            # Marca a linha clicada
+            row.selected = True
+            row.color = ft.Colors.GREY
+            self.selected_row_index = idx
+            tabela.selected_index = idx
+            print(f'Linha selecionada: {idx}')
+            tabela.update()
+
         tabela = ft.DataTable(
             columns=[
                 ft.DataColumn(ft.Text("Intertício")),
@@ -82,7 +109,8 @@ class ConsultarExtrasScreen(BaseScreen):
                 ft.DataColumn(ft.Text("Fim")),
                 ft.DataColumn(ft.Text("Quant. Horas")),
             ],
-            rows=[]
+            rows=[],
+            show_checkbox_column=False
         )
         tabela_listview = ft.ListView(
             controls=[tabela],
@@ -99,8 +127,7 @@ class ConsultarExtrasScreen(BaseScreen):
         )
 
         def atualizar_tabela(_=None):
-            db_manager = DatabaseManager()
-            db_manager.init_database()
+            db_manager = self.app.db
             matricula_val = field_policial.value.strip()
             data_val = field_data.value.strip()
             interticio_val = field_interticio.value.strip()
@@ -139,7 +166,8 @@ class ConsultarExtrasScreen(BaseScreen):
             result_extras = db_manager.execute_query(query_extras, tuple(params))
 
             tabela.rows.clear()
-            for row in result_extras:
+            self.tabela_rows.clear()
+            for idx, row in enumerate(result_extras):
                 policial_nome_row = policial_nome
                 if not policial_nome_row:
                     query_nome = "SELECT nome FROM policiais WHERE id = ?"
@@ -148,20 +176,25 @@ class ConsultarExtrasScreen(BaseScreen):
                 query_data_val = "SELECT data FROM calendario WHERE id = ?"
                 res_data_val = db_manager.execute_query(query_data_val, (row["data_id"],)) if hasattr(row, "keys") else db_manager.execute_query(query_data_val, (row[1],))
                 data_val_row = res_data_val[0]["data"] if res_data_val and hasattr(res_data_val[0], "keys") else (res_data_val[0][0] if res_data_val else "")
-                tabela.rows.append(ft.DataRow(cells=[
-                    ft.DataCell(ft.Text(row["interticio"] if hasattr(row, "keys") else row[0])),
-                    ft.DataCell(ft.Text(data_val_row)),
-                    ft.DataCell(ft.Text(policial_nome_row)),
-                    ft.DataCell(ft.Text(row["turno"] if hasattr(row, "keys") else row[3])),
-                    ft.DataCell(ft.Text(row["operacao"] if hasattr(row, "keys") else row[4])),
-                    ft.DataCell(ft.Text(row["inicio"] if hasattr(row, "keys") else row[5])),
-                    ft.DataCell(ft.Text(row["fim"] if hasattr(row, "keys") else row[6])),
-                    ft.DataCell(ft.Text(row["horas"] if hasattr(row, "keys") else row[7])),
-                ]))
+                dr = ft.DataRow(
+                    selected=(self.selected_row_index == idx),
+                    on_select_changed=on_row_select,
+                    color=ft.Colors.GREY_200 if self.selected_row_index == idx else None,
+                    cells=[
+                        ft.DataCell(ft.Text(row["interticio"] if hasattr(row, "keys") else row[0])),
+                        ft.DataCell(ft.Text(data_val_row)),
+                        ft.DataCell(ft.Text(policial_nome_row)),
+                        ft.DataCell(ft.Text(row["turno"] if hasattr(row, "keys") else row[3])),
+                        ft.DataCell(ft.Text(row["operacao"] if hasattr(row, "keys") else row[4])),
+                        ft.DataCell(ft.Text(row["inicio"] if hasattr(row, "keys") else row[5])),
+                        ft.DataCell(ft.Text(row["fim"] if hasattr(row, "keys") else row[6])),
+                        ft.DataCell(ft.Text(row["horas"] if hasattr(row, "keys") else row[7])),
+                    ]
+                )
+                tabela.rows.append(dr)
+                self.tabela_rows.append(dr)
             tabela.update()
-            # Fecha explicitamente a conexão para evitar erro de thread
-            if hasattr(db_manager, "close_connection"):
-                db_manager.close_connection()
+            # Não fechar a conexão global do app
 
         field_policial.on_change = atualizar_tabela
         field_data.on_change = atualizar_tabela

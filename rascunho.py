@@ -1,46 +1,53 @@
-from time import sleep
 import flet as ft
 
-
 def main(page: ft.Page):
+    page.title = "Exemplo DataTable com mudança de cor"
+    page.scroll = "auto"
 
-    def change_auto_scroll(e):
-        print("Change auto scroll triggered")
-        lv.auto_scroll = not lv.auto_scroll
+    def mudar_cor_linha(e):
+        row = e.control  # DataRow que disparou o evento
+        row.selected = not row.selected  # alterna seleção manualmente
+
+        if row.selected:
+            row.color = "#90EE90"  # verde claro
+            print("Linha selecionada → cor VERDE")
+        else:
+            row.color = None  # volta ao padrão
+            print("Linha desmarcada → cor resetada")
+
         page.update()
 
-    lv = ft.ListView(spacing=10, padding=20, width=150, auto_scroll=True)
-    lvc = ft.Container(
-        content=lv,
-        bgcolor=ft.Colors.GREY_500,
+    tabela = ft.DataTable(
+        width=700,
+        bgcolor="yellow",
+        border=ft.border.all(2, "red"),
+        border_radius=10,
+        vertical_lines=ft.border.BorderSide(3, "blue"),
+        horizontal_lines=ft.border.BorderSide(1, "green"),
+        sort_column_index=0,
+        sort_ascending=True,
+        heading_row_color=ft.Colors.BLACK12,
+        heading_row_height=100,
+        data_row_color={"hovered": "0x30FF0000"},
+        show_checkbox_column=False,  # aqui desabilitei checkbox, só clique na linha
+        divider_thickness=0,
+        column_spacing=200,
+        columns=[
+            ft.DataColumn(ft.Text("Column 1")),
+            ft.DataColumn(ft.Text("Column 2"), numeric=True),
+        ],
+        rows=[
+            ft.DataRow(
+                [ft.DataCell(ft.Text("A")), ft.DataCell(ft.Text("1"))],
+                on_select_changed=mudar_cor_linha,
+            ),
+            ft.DataRow(
+                [ft.DataCell(ft.Text("B")), ft.DataCell(ft.Text("2"))],
+                on_select_changed=mudar_cor_linha,
+            ),
+        ],
     )
-    sw = ft.Switch(
-        thumb_icon=ft.Icons.LIST_OUTLINED,
-        value=True,
-        label="Auto-scroll",
-        label_position=ft.LabelPosition.RIGHT,
-        on_change=change_auto_scroll,
-    )
 
-    c = ft.Row(
-        [lvc, sw],
-        expand=True,
-        vertical_alignment=ft.CrossAxisAlignment.START,
-    )
+    page.add(tabela)
 
-    count = 1
-
-    for i in range(0, 60):
-        lv.controls.append(ft.Text(f"Line {count}", color=ft.Colors.ON_SECONDARY))
-        count += 1
-
-    page.add(c)
-
-    for i in range(0, 60):
-        sleep(1)
-        lv.controls.append(ft.Text(f"Line {count}", color=ft.Colors.ON_SECONDARY))
-        count += 1
-        page.update()
-
-
-ft.app(main)
+ft.app(target=main)
