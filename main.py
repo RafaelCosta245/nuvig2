@@ -77,10 +77,14 @@ class MainApp:
             page.window_resizable = True
             page.theme_mode = ft.ThemeMode.LIGHT
             page.padding = 0
-            page.locale_configuration = ft.Locale(
-                                        language_code="pt"
-                                        )
-            #a = ft.Locale(language_code="pt")
+            page.locale_configuration = ft.LocaleConfiguration(
+                supported_locales=[
+                    ft.Locale("pt", "BR"),  # Português do Brasil
+                    ft.Locale("en", "US")   # Inglês como fallback
+                ],
+                current_locale=ft.Locale("pt", "BR")  # Define pt-BR como padrão
+            )
+
 
             # Inicializar banco de dados
             self.db.init_database()
