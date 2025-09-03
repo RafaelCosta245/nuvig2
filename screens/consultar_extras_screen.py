@@ -1,5 +1,6 @@
 import flet as ft
 from .base_screen import BaseScreen
+from dialogalert import show_alert_dialog
 
 class ConsultarExtrasScreen(BaseScreen):
     def __init__(self, app_instance):
@@ -73,6 +74,8 @@ class ConsultarExtrasScreen(BaseScreen):
         # Controle para seleção única e cor de linha
         self.selected_row_index = None
         self.tabela_rows = []  # Guardar referências das linhas
+        self.result_extras = []  # Guardar os dados das extras para referência
+        
         def on_row_select(e):
             row = e.control  # DataRow que disparou o evento
             idx = None
@@ -141,7 +144,7 @@ class ConsultarExtrasScreen(BaseScreen):
                 result_policial = db_manager.execute_query(query_policial, (matricula_val,))
                 if result_policial:
                     policial_id = result_policial[0]["id"] if hasattr(result_policial[0], "keys") else result_policial[0][0]
-                    policial_nome = result_policial[0]["nome"] if hasattr(result_policial[0], "keys") else ""
+                    policial_nome = result_policial[0]["nome"] if hasattr(result_policial[0], "keys") else result_policial[0][0]
                     filtros.append("policial_id = ?")
                     params.append(policial_id)
 
@@ -164,6 +167,9 @@ class ConsultarExtrasScreen(BaseScreen):
             where_clause = " AND ".join(filtros) if filtros else "1=1"
             query_extras = f"SELECT interticio, data_id, policial_id, turno, operacao, inicio, fim, horas FROM extras WHERE {where_clause}"
             result_extras = db_manager.execute_query(query_extras, tuple(params))
+            
+            # Armazenar os resultados para referência
+            self.result_extras = result_extras
 
             tabela.rows.clear()
             self.tabela_rows.clear()
@@ -200,13 +206,81 @@ class ConsultarExtrasScreen(BaseScreen):
         field_data.on_change = atualizar_tabela
         field_interticio.on_change = atualizar_tabela
 
+        # Função para apagar a extra selecionada
+        def apagar_extra(e):
+            if self.selected_row_index is None:
+                show_alert_dialog(e.control.page, "Selecione uma linha para apagar!", success=False)
+                return
+            
+            # Obter os dados da extra selecionada
+            extra_selecionada = self.result_extras[self.selected_row_index]
+            
+            # Criar diálogo de confirmação
+            def confirmar_apagar(e):
+                try:
+                    # Construir a query de exclusão
+                    # Precisamos de uma chave única para identificar a extra
+                    # Vamos usar a combinação de policial_id, data_id, turno, operacao e inicio
+                    policial_id = extra_selecionada["policial_id"] if hasattr(extra_selecionada, "keys") else extra_selecionada[2]
+                    data_id = extra_selecionada["data_id"] if hasattr(extra_selecionada, "keys") else extra_selecionada[1]
+                    turno = extra_selecionada["turno"] if hasattr(extra_selecionada, "keys") else extra_selecionada[3]
+                    operacao = extra_selecionada["operacao"] if hasattr(extra_selecionada, "keys") else extra_selecionada[4]
+                    inicio = extra_selecionada["inicio"] if hasattr(extra_selecionada, "keys") else extra_selecionada[5]
+                    
+                    # Query de exclusão
+                    delete_query = """
+                        DELETE FROM extras 
+                        WHERE policial_id = ? AND data_id = ? AND turno = ? AND operacao = ? AND inicio = ?
+                    """
+                    
+                    # Executar a exclusão
+                    success = self.app.db.execute_command(delete_query, (policial_id, data_id, turno, operacao, inicio))
+                    
+                    if success:
+                        show_alert_dialog(e.control.page, "Extra apagada com sucesso!", success=True)
+                        # Limpar seleção
+                        self.selected_row_index = None
+                        # Atualizar a tabela
+                        atualizar_tabela()
+                    else:
+                        show_alert_dialog(e.control.page, "Erro ao apagar a extra!", success=False)
+                        
+                except Exception as ex:
+                    show_alert_dialog(e.control.page, f"Erro ao apagar: {str(ex)}", success=False)
+                
+                # Fechar o diálogo
+                e.control.page.close(dlg_confirmacao)
+            
+            def cancelar_apagar(e):
+                e.control.page.close(dlg_confirmacao)
+            
+            # Criar o diálogo de confirmação
+            dlg_confirmacao = ft.AlertDialog(
+                modal=True,
+                title=ft.Text("Confirmar Exclusão", color=ft.Colors.RED),
+                content=ft.Text(
+                    f"Tem certeza que deseja apagar esta extra?\n\n"
+                    f"Intertício: {extra_selecionada['interticio'] if hasattr(extra_selecionada, 'keys') else extra_selecionada[0]}\n"
+                    f"Turno: {extra_selecionada['turno'] if hasattr(extra_selecionada, 'keys') else extra_selecionada[3]}\n"
+                    f"Operação: {extra_selecionada['operacao'] if hasattr(extra_selecionada, 'keys') else extra_selecionada[4]}\n"
+                    f"Início: {extra_selecionada['inicio'] if hasattr(extra_selecionada, 'keys') else extra_selecionada[5]}"
+                ),
+                actions=[
+                    ft.TextButton("Cancelar", on_click=cancelar_apagar),
+                    ft.TextButton("Apagar", on_click=confirmar_apagar, style=ft.ButtonStyle(color=ft.Colors.RED)),
+                ],
+                actions_alignment=ft.MainAxisAlignment.END,
+            )
+            
+            e.control.page.open(dlg_confirmacao)
+
         btn_apagar = ft.TextButton(
             "Apagar",
             style=ft.ButtonStyle(
                 color=ft.Colors.BLACK,
                 text_style=ft.TextStyle(size=12)
             ),
-            on_click=lambda e: print("Apagar acionado")
+            on_click=apagar_extra
         )
         btn_editar = ft.TextButton(
             "Editar",
