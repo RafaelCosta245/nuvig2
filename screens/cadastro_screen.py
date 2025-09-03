@@ -40,7 +40,7 @@ class CadastroScreen(BaseScreen):
                     controls=[
                         ft.Text("👮 Cadastrar Policial", size=18, weight=ft.FontWeight.BOLD),
                         ft.Text("Gerenciar cadastro de policiais", size=12, color=ft.Colors.GREY),
-                        ft.Container(height=10),
+                        ft.Container(height=20),
                         ft.TextButton(
                             text="Abrir",
                             icon=ft.Icons.ARROW_FORWARD,
@@ -89,10 +89,11 @@ class CadastroScreen(BaseScreen):
         card_alterar = ft.Card(
             content=ft.Container(
                 content=ft.Column([
-                    ft.Text("📝 Alterar Cadastro", size=20, weight=ft.FontWeight.BOLD),
+                    ft.Text("📝 Alterar Cadastro", size=18, weight=ft.FontWeight.BOLD),
                     ft.Text("Alterar dados do PP", size=12, color=ft.Colors.GREY),
                     #ft.Icon(ft.Icons.EDIT, size=40),
-                    #ft.ElevatedButton("Alterar", on_click=self.ir_para_edicao_registros)
+                    #ft.ElevatedButton("Alterar", on_click=self.ir_para_edicao_registros),
+                    #ft.Container(height=20),
                     ft.TextButton(
                         text="Abrir",
                         icon=ft.Icons.ARROW_FORWARD,

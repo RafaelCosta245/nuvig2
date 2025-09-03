@@ -3,29 +3,6 @@ from .base_screen import BaseScreen
 from dialogalert import show_alert_dialog
 
 class CadastrarExtraScreen(BaseScreen):
-    import sys
-    import os
-    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-    from dialogalert import show_alert_dialog
-    from dialogalert import show_alert_dialog
-    def get_content(self) -> ft.Control:
-        # Campos do formulário
-        matricula = ft.TextField(label="Matrícula", width=200, input_filter=ft.NumbersOnlyInputFilter())
-        policial = ft.TextField(label="Policial", width=200, read_only=True)
-        data = ft.TextField(label="Data", width=200, hint_text="dd/mm/aaaa")
-        # Função para aplicar máscara de data
-        def mascara_data(e):
-            valor = ''.join([c for c in data.value if c.isdigit()])
-            novo_valor = ''
-            if len(valor) > 0:
-                novo_valor += valor[:2]
-            if len(valor) > 2:
-                novo_valor += '/' + valor[2:4]
-            if len(valor) > 4:
-                novo_valor += '/' + valor[4:8]
-            data.value = novo_valor
-            e.control.page.update()
-        data.on_change = mascara_data
     def __init__(self, app_instance):
         super().__init__(app_instance)
         self.current_nav = "cadastrar_extra"
@@ -57,6 +34,20 @@ class CadastrarExtraScreen(BaseScreen):
         fim = ft.TextField(label="Fim", width=200, hint_text="hh:mm")
         quant_horas = ft.TextField(label="Quant. Horas", width=200)
 
+        # Função para aplicar máscara de data
+        def mascara_data(e):
+            valor = ''.join([c for c in data.value if c.isdigit()])
+            novo_valor = ''
+            if len(valor) > 0:
+                novo_valor += valor[:2]
+            if len(valor) > 2:
+                novo_valor += '/' + valor[2:4]
+            if len(valor) > 4:
+                novo_valor += '/' + valor[4:8]
+            data.value = novo_valor
+            e.control.page.update()
+        data.on_change = mascara_data
+
         # Função para buscar policial pela matrícula
         def buscar_policial(e):
             valor = matricula.value.strip()
@@ -67,33 +58,6 @@ class CadastrarExtraScreen(BaseScreen):
                 policial.value = ""
             e.control.page.update()
         matricula.on_change = buscar_policial
-
-        # Função para lógica do dropdown operação
-        def on_operacao_change(e):
-            if operacao.value == "OBLL":
-                turno.value = "Vespertino"
-                quant_horas.value = "12"
-                inicio.value = "16:00"
-                fim.value = "04:00"
-            e.control.page.update()
-        operacao.on_change = on_operacao_change
-
-        # Função para lógica do dropdown turno
-        def on_turno_change(e):
-            if turno.value == "Diurno":
-                quant_horas.value = "12"
-                inicio.value = "08:00"
-                fim.value = "20:00"
-                if operacao.value == "OBLL":
-                    operacao.value = "Guarda"
-            elif turno.value == "Noturno":
-                quant_horas.value = "12"
-                inicio.value = "20:00"
-                fim.value = "08:00"
-                if operacao.value == "OBLL":
-                    operacao.value = "Guarda"
-            e.control.page.update()
-        turno.on_change = on_turno_change
 
         # Função para lógica do dropdown operação
         def on_operacao_change(e):
@@ -188,7 +152,45 @@ class CadastrarExtraScreen(BaseScreen):
             except Exception as e:
                 interticio_nome = ""
 
-            # 5. Inserir extra incluindo o intertício
+            # 5. NOVA VERIFICAÇÃO: Verificar limite de horas por intertício
+            if interticio_nome:
+                # Buscar todas as extras do policial no intertício
+                query_horas_interticio = """
+                    SELECT e.horas 
+                    FROM extras e 
+                    JOIN calendario c ON e.data_id = c.id 
+                    JOIN interticios i ON date(c.data) BETWEEN date(i.data_inicial) AND date(i.data_final)
+                    WHERE e.policial_id = ? AND i.nome = ?
+                """
+                result_horas = self.app.db.execute_query(query_horas_interticio, (policial_id, interticio_nome))
+                
+                # Calcular total de horas já cadastradas
+                total_horas_existentes = 0
+                if result_horas:
+                    for row in result_horas:
+                        horas_valor = row.get("horas") if isinstance(row, dict) else row[0]
+                        try:
+                            total_horas_existentes += int(horas_valor)
+                        except (ValueError, TypeError):
+                            pass
+                
+                # Adicionar as horas da nova extra
+                horas_nova_extra = int(quant_horas.value) if quant_horas.value else 0
+                total_final = total_horas_existentes + horas_nova_extra
+                
+                # Verificar se excede o limite de 96 horas
+                if total_final > 96:
+                    show_alert_dialog(
+                        e.control.page, 
+                        f"Limite de horas excedido para o intertício '{interticio_nome}'!\n"
+                        f"Horas existentes: {total_horas_existentes}\n"
+                        f"Horas da nova extra: {horas_nova_extra}\n"
+                        f"Total: {total_final} (máximo: 96)", 
+                        success=False
+                    )
+                    return
+
+            # 6. Inserir extra incluindo o intertício
             command = """
                 INSERT INTO extras (inicio, fim, horas, operacao, turno, policial_id, data_id, interticio)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -213,7 +215,6 @@ class CadastrarExtraScreen(BaseScreen):
             else:
                 show_alert_dialog(e.control.page, "Erro ao gravar extra!", success=False)
 
-
         # Layout do formulário em duas colunas e quatro linhas
         # DatePicker
         import datetime
@@ -221,7 +222,7 @@ class CadastrarExtraScreen(BaseScreen):
             first_date=datetime.datetime(2020, 1, 1),
             last_date=datetime.datetime(2030, 12, 31),
         )
-    # Removido: Adiciona o datepicker ao overlay da página
+        
         def on_date_change(e):
             if datepicker.value:
                 data.value = datepicker.value.strftime("%d/%m/%Y")
@@ -251,6 +252,7 @@ class CadastrarExtraScreen(BaseScreen):
             height=matricula.height,
             on_click=open_date_picker
         )
+        
         form_grid = ft.Column([
             ft.Row([
                 matricula, policial
