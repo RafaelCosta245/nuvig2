@@ -6,6 +6,8 @@ from screens.cadastro_policial_screen import CadastroPolicialScreen
 from screens.extras_screen import ExtrasScreen
 from screens.permutas_screen import PermutasScreen
 from screens.compensacoes_screen import CompensacoesScreen
+from screens.consultar_compensacoes_screen import ConsultarCompensacoesScreen
+from screens.cadastrar_compensacao_screen import CadastrarCompensacaoScreen
 from database.database_manager import DatabaseManager
 from pathlib import Path
 import os, sys, shutil
@@ -92,6 +94,10 @@ class MainApp:
                 "extras": ExtrasScreen(self),
                 "permutas": PermutasScreen(self),
                 "compensacoes": CompensacoesScreen(self),
+                "cadastrar_compensacao": CadastrarCompensacaoScreen(self),
+                "consultar_compensacoes": ConsultarCompensacoesScreen(self),
+                #"cadastrar_compensacao": __import__("screens.cadastrar_compensacao_screen", fromlist=["CadastrarCompensacaoScreen"]).CadastrarCompensacaoScreen(self),
+                #"consultar_compensacoes": __import__("screens.consultar_compensacoes_screen", fromlist=["ConsultarCompensacoesScreen"]).ConsultarCompensacoesScreen(self),
                 "edicao_registros": __import__("screens.edicao_registros_screen", fromlist=["EdicaoRegistrosScreen"]).EdicaoRegistrosScreen(self),
                 "ferias": __import__("screens.ferias_screen", fromlist=["FeriasScreen"]).FeriasScreen(self),
                 "ausencias": __import__("screens.ausencias_screen", fromlist=["AusenciasScreen"]).AusenciasScreen(self),

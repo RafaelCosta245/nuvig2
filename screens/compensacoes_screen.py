@@ -20,17 +20,18 @@ class CompensacoesScreen(BaseScreen):
             alignment=ft.alignment.center
         )
 
+
         def card_cadastrar_compensacao() -> ft.Control:
             return ft.Container(
                 content=ft.Column(
                     controls=[
-                        ft.Text("📝 Cadastrar Compensação", size=18, weight=ft.FontWeight.BOLD,text_align=ft.TextAlign.CENTER),
+                        ft.Text("📝 Cadastrar Compensação", size=18, weight=ft.FontWeight.BOLD, text_align=ft.TextAlign.CENTER),
                         ft.Text("   Agendar nova compensação", size=12, color=ft.Colors.GREY, text_align=ft.TextAlign.CENTER),
                         ft.Container(height=15),
                         ft.TextButton(
                             text="Abrir",
                             icon=ft.Icons.ARROW_FORWARD,
-                            on_click=lambda e: self.navigate_to("cadastrar_extra"),
+                            on_click=lambda e: self.navigate_to("cadastrar_compensacao"),
                         ),
                     ],
                     horizontal_alignment=ft.CrossAxisAlignment.START,
@@ -48,15 +49,13 @@ class CompensacoesScreen(BaseScreen):
             return ft.Container(
                 content=ft.Column(
                     controls=[
-                        ft.Text("🔎 Compensações Agendadas", size=18, weight=ft.FontWeight.BOLD,
-                                text_align=ft.TextAlign.CENTER),
-                        ft.Text("   Pesquise as compensações já agendadas", size=12, color=ft.Colors.GREY,
-                                text_align=ft.TextAlign.CENTER),
+                        ft.Text("🔎 Compensações Agendadas", size=18, weight=ft.FontWeight.BOLD, text_align=ft.TextAlign.CENTER),
+                        ft.Text("   Pesquise as compensações já agendadas", size=12, color=ft.Colors.GREY, text_align=ft.TextAlign.CENTER),
                         ft.Container(height=15),
                         ft.TextButton(
                             text="Abrir",
                             icon=ft.Icons.ARROW_FORWARD,
-                            on_click=lambda e: self.navigate_to("consultar_extras"),
+                            on_click=lambda e: self.navigate_to("consultar_compensacoes"),
                         ),
                     ],
                     horizontal_alignment=ft.CrossAxisAlignment.START,
