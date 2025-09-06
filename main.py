@@ -8,6 +8,8 @@ from screens.permutas_screen import PermutasScreen
 from screens.compensacoes_screen import CompensacoesScreen
 from screens.consultar_compensacoes_screen import ConsultarCompensacoesScreen
 from screens.cadastrar_compensacao_screen import CadastrarCompensacaoScreen
+from screens.cadastrar_permuta_screen import CadastrarPermutaScreen
+from screens.consultar_permutas_screen import ConsultarPermutasScreen
 from database.database_manager import DatabaseManager
 from pathlib import Path
 import os, sys, shutil
@@ -100,6 +102,8 @@ class MainApp:
                 "compensacoes": CompensacoesScreen(self),
                 "cadastrar_compensacao": CadastrarCompensacaoScreen(self),
                 "consultar_compensacoes": ConsultarCompensacoesScreen(self),
+                "cadastrar_permuta": CadastrarPermutaScreen(self),
+                "consultar_permutas": ConsultarPermutasScreen(self),
                 #"cadastrar_compensacao": __import__("screens.cadastrar_compensacao_screen", fromlist=["CadastrarCompensacaoScreen"]).CadastrarCompensacaoScreen(self),
                 #"consultar_compensacoes": __import__("screens.consultar_compensacoes_screen", fromlist=["ConsultarCompensacoesScreen"]).ConsultarCompensacoesScreen(self),
                 "edicao_registros": __import__("screens.edicao_registros_screen", fromlist=["EdicaoRegistrosScreen"]).EdicaoRegistrosScreen(self),
