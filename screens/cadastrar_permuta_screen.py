@@ -235,7 +235,8 @@ class CadastrarPermutaScreen(BaseScreen):
         # Campos do formulário - Policial Solicitante
         matricula_solicitante = ft.TextField(
             label="Matrícula Solicitante",
-            width=200, 
+            width=200,
+            max_length=8,
             input_filter=ft.NumbersOnlyInputFilter(), 
             on_change=buscar_policial_solicitante
         )
@@ -270,7 +271,8 @@ class CadastrarPermutaScreen(BaseScreen):
         # Campos do formulário - Policial Permutado
         matricula_permutado = ft.TextField(
             label="Matrícula Permutado", 
-            width=200, 
+            width=200,
+            max_length=8,
             input_filter=ft.NumbersOnlyInputFilter(), 
             on_change=buscar_policial_permutado
         )

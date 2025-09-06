@@ -11,7 +11,7 @@ class EdicaoRegistrosScreen:
         self.navigation_callback = callback
 
     def get_content(self):
-        self.matricula_input = ft.TextField(label="Matrícula", width=200, on_change=self.buscar_policial)
+        self.matricula_input = ft.TextField(label="Matrícula", width=200, on_change=self.buscar_policial, max_length=8)
         self.result_container = ft.Container()
         self.save_button = ft.ElevatedButton("Salvar Alterações", on_click=self.salvar_alteracoes, visible=False)
         return ft.Column([

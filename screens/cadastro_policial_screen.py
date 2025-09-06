@@ -21,7 +21,7 @@ class CadastroPolicialScreen(BaseScreen):
 
         self.campo_nome = ft.TextField(label="Nome Completo", width=410, border_radius=4)
         self.campo_qra = ft.TextField(label="QRA", width=200, border_radius=4)
-        self.campo_matricula = ft.TextField(label="Matrícula", width=200, border_radius=4)
+        self.campo_matricula = ft.TextField(label="Matrícula", width=200, border_radius=4,max_length=8)
         self.campo_inicio = ft.TextField(label="Último Plantão", width=200, border_radius=4)
 
 

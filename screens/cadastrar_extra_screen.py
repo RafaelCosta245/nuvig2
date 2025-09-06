@@ -9,14 +9,14 @@ class CadastrarExtraScreen(BaseScreen):
 
     def get_content(self) -> ft.Control:
         # Campos do formulário
-        matricula = ft.TextField(label="Matrícula", width=200, input_filter=ft.NumbersOnlyInputFilter())
+        matricula = ft.TextField(label="Matrícula", width=200, max_length=8)
         policial = ft.TextField(label="Policial", width=200, read_only=True)
         data = ft.TextField(label="Data", width=200, hint_text="dd/mm/aaaa")
         operacao = ft.Dropdown(
             label="Operação",
             width=200,
             options=[
-                ft.dropdown.Option("Guarda"),
+                ft.dropdown.Option("Rotina"),
                 ft.dropdown.Option("OBLL"),
                 ft.dropdown.Option("Outro"),
             ]
