@@ -21,7 +21,7 @@ class ConsultarFeriasScreen(BaseScreen):
                 text_style=ft.TextStyle(size=12)
             )
         )
-        field_policial = ft.TextField(label="Matrícula", width=200)
+        field_policial = ft.TextField(label="Matrícula", width=200, max_length=8)
         col_policial = ft.Column([txt_pesq_policial, field_policial], spacing=8, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
 
         txt_pesq_periodo = ft.TextButton(
@@ -84,13 +84,13 @@ class ConsultarFeriasScreen(BaseScreen):
 
         tabela = ft.DataTable(
             columns=[
-                ft.DataColumn(ft.Text("Policial")),
-                ft.DataColumn(ft.Text("Matrícula")),
-                ft.DataColumn(ft.Text("Período Aquisitivo")),
-                ft.DataColumn(ft.Text("Período 1")),
-                ft.DataColumn(ft.Text("Período 2")),
-                ft.DataColumn(ft.Text("Período 3")),
-                ft.DataColumn(ft.Text("Total Dias")),
+                ft.DataColumn(ft.Text("QRA", text_align=ft.TextAlign.LEFT)),
+                ft.DataColumn(ft.Text("Matrícula", text_align=ft.TextAlign.LEFT)),
+                ft.DataColumn(ft.Text("Período 1", text_align=ft.TextAlign.LEFT)),
+                ft.DataColumn(ft.Text("Período 2", text_align=ft.TextAlign.LEFT)),
+                ft.DataColumn(ft.Text("Período 3", text_align=ft.TextAlign.LEFT)),
+                ft.DataColumn(ft.Text("Total Dias", text_align=ft.TextAlign.LEFT)),
+                ft.DataColumn(ft.Text("Conflitos", text_align=ft.TextAlign.LEFT)),
             ],
             rows=[],
             show_checkbox_column=False
@@ -108,6 +108,128 @@ class ConsultarFeriasScreen(BaseScreen):
             expand=True,
             width=1200 * 1.2
         )
+
+        def verificar_conflitos_ferias():
+            """
+            Verifica conflitos de datas entre policiais da mesma equipe
+            Retorna um dicionário com informações de conflitos para cada linha da tabela
+            IMPORTANTE: Sempre busca TODOS os dados do banco para detectar conflitos reais
+            """
+            conflitos_por_linha = {}
+            
+            try:
+                db_manager = self.app.db
+                
+                # SEMPRE buscar TODAS as férias do banco para detectar conflitos reais
+                # Os conflitos são uma propriedade objetiva dos dados, não da visualização
+                query_completa = """
+                    SELECT f.policial_id, f.periodo_aquisitivo, f.inicio1, f.fim1, f.inicio2, f.fim2, f.inicio3, f.fim3,
+                           p.qra, p.matricula, p.escala
+                    FROM ferias f
+                    JOIN policiais p ON f.policial_id = p.id
+                """
+                todas_ferias = db_manager.execute_query(query_completa)
+                
+                if not todas_ferias:
+                    return conflitos_por_linha
+                
+                # Criar um dicionário para mapear conflitos por policial_id + periodo_aquisitivo + inicio1
+                conflitos_por_ferias = {}
+                
+                # Para cada linha de férias, verificar conflitos com outros policiais da mesma equipe
+                for i, ferias_atual in enumerate(todas_ferias):
+                    policial_id_atual = ferias_atual["policial_id"] if hasattr(ferias_atual, "keys") else ferias_atual[0]
+                    escala_atual = ferias_atual["escala"] if hasattr(ferias_atual, "keys") else ferias_atual[9]
+                    equipe_atual = escala_atual[0] if escala_atual else ""
+                    
+                    conflitos_linha = []
+                    
+                    # Verificar conflitos com outros policiais da mesma equipe
+                    for j, ferias_outro in enumerate(todas_ferias):
+                        if i == j:  # Não comparar com ele mesmo
+                            continue
+                            
+                        policial_id_outro = ferias_outro["policial_id"] if hasattr(ferias_outro, "keys") else ferias_outro[0]
+                        escala_outro = ferias_outro["escala"] if hasattr(ferias_outro, "keys") else ferias_outro[9]
+                        equipe_outro = escala_outro[0] if escala_outro else ""
+                        
+                        # Só verificar se for da mesma equipe
+                        if equipe_atual != equipe_outro:
+                            continue
+                        
+                        qra_outro = ferias_outro["qra"] if hasattr(ferias_outro, "keys") else ferias_outro[8]
+                        
+                        # Verificar conflitos entre os períodos
+                        conflito = verificar_conflito_periodos(ferias_atual, ferias_outro, qra_outro)
+                        if conflito:
+                            conflitos_linha.append(conflito)
+                    
+                    if conflitos_linha:
+                        # Criar chave única para esta férias: policial_id + periodo_aquisitivo + inicio1
+                        periodo_aquisitivo = ferias_atual["periodo_aquisitivo"] if hasattr(ferias_atual, "keys") else ferias_atual[1]
+                        inicio1 = ferias_atual["inicio1"] if hasattr(ferias_atual, "keys") else ferias_atual[2]
+                        chave_ferias = f"{policial_id_atual}_{periodo_aquisitivo}_{inicio1}"
+                        conflitos_por_ferias[chave_ferias] = conflitos_linha
+                
+                return conflitos_por_ferias
+                
+            except Exception as e:
+                print(f"Erro ao verificar conflitos: {e}")
+                return conflitos_por_ferias
+
+        def verificar_conflito_periodos(ferias1, ferias2, qra_policial2):
+            """
+            Verifica se há conflito entre os períodos de duas férias
+            """
+            try:
+                from datetime import datetime
+                
+                # Extrair períodos da primeira férias
+                periodos1 = []
+                if ferias1["inicio1"] and ferias1["fim1"]:
+                    periodos1.append(("Período 1", ferias1["inicio1"], ferias1["fim1"]))
+                if ferias1["inicio2"] and ferias1["fim2"]:
+                    periodos1.append(("Período 2", ferias1["inicio2"], ferias1["fim2"]))
+                if ferias1["inicio3"] and ferias1["fim3"]:
+                    periodos1.append(("Período 3", ferias1["inicio3"], ferias1["fim3"]))
+                
+                # Extrair períodos da segunda férias
+                periodos2 = []
+                if ferias2["inicio1"] and ferias2["fim1"]:
+                    periodos2.append(("Período 1", ferias2["inicio1"], ferias2["fim1"]))
+                if ferias2["inicio2"] and ferias2["fim2"]:
+                    periodos2.append(("Período 2", ferias2["inicio2"], ferias2["fim2"]))
+                if ferias2["inicio3"] and ferias2["fim3"]:
+                    periodos2.append(("Período 3", ferias2["inicio3"], ferias2["fim3"]))
+                
+                # Verificar conflitos entre os períodos
+                for periodo1_nome, inicio1, fim1 in periodos1:
+                    for periodo2_nome, inicio2, fim2 in periodos2:
+                        # Converter para datetime
+                        inicio1_dt = datetime.strptime(inicio1, "%Y-%m-%d")
+                        fim1_dt = datetime.strptime(fim1, "%Y-%m-%d")
+                        inicio2_dt = datetime.strptime(inicio2, "%Y-%m-%d")
+                        fim2_dt = datetime.strptime(fim2, "%Y-%m-%d")
+                        
+                        # Verificar sobreposição
+                        if not (fim1_dt < inicio2_dt or inicio1_dt > fim2_dt):
+                            # Há conflito - calcular período de conflito
+                            data_inicio_conflito = max(inicio1_dt, inicio2_dt)
+                            data_fim_conflito = min(fim1_dt, fim2_dt)
+                            
+                            return {
+                                "policial": qra_policial2,
+                                "periodo_atual": periodo1_nome,
+                                "periodo_conflito": periodo2_nome,
+                                "data_inicio": data_inicio_conflito.strftime("%d/%m/%Y"),
+                                "data_fim": data_fim_conflito.strftime("%d/%m/%Y")
+                            }
+                
+                return None
+                
+            except Exception as e:
+                print(f"Erro ao verificar conflito de períodos: {e}")
+                return None
 
         def atualizar_tabela(_=None):
             db_manager = self.app.db
@@ -151,6 +273,9 @@ class ConsultarFeriasScreen(BaseScreen):
             tabela.rows.clear()
             self.tabela_rows.clear()
             
+            # Verificar conflitos de datas
+            conflitos = verificar_conflitos_ferias()
+            
             # Função para calcular dias entre duas datas
             def calcular_dias(data_inicio, data_fim):
                 if not data_inicio or not data_fim:
@@ -177,14 +302,14 @@ class ConsultarFeriasScreen(BaseScreen):
                     return "-"
             
             for idx, row in enumerate(result_ferias):
-                policial_nome_row = policial_nome
+                policial_qra_row = policial_nome  # Usar o nome como fallback se não encontrar QRA
                 policial_matricula_row = policial_matricula
-                if not policial_nome_row:
-                    query_nome = "SELECT nome, matricula FROM policiais WHERE id = ?"
-                    res_nome = db_manager.execute_query(query_nome, (row["policial_id"],)) if hasattr(row, "keys") else db_manager.execute_query(query_nome, (row[0],))
-                    if res_nome:
-                        policial_nome_row = res_nome[0]["nome"] if hasattr(res_nome[0], "keys") else res_nome[0][0]
-                        policial_matricula_row = res_nome[0]["matricula"] if hasattr(res_nome[0], "keys") else res_nome[0][1]
+                if not policial_qra_row:
+                    query_policial_info = "SELECT qra, matricula FROM policiais WHERE id = ?"
+                    res_policial = db_manager.execute_query(query_policial_info, (row["policial_id"],)) if hasattr(row, "keys") else db_manager.execute_query(query_policial_info, (row[0],))
+                    if res_policial:
+                        policial_qra_row = res_policial[0]["qra"] if hasattr(res_policial[0], "keys") else res_policial[0][0]
+                        policial_matricula_row = res_policial[0]["matricula"] if hasattr(res_policial[0], "keys") else res_policial[0][1]
                 
                 # Obter dados das férias
                 if hasattr(row, "keys"):
@@ -210,19 +335,65 @@ class ConsultarFeriasScreen(BaseScreen):
                 dias3 = calcular_dias(inicio3, fim3)
                 total_dias = dias1 + dias2 + dias3
                 
+                # Verificar se esta linha tem conflitos
+                # Criar chave única para esta férias: policial_id + periodo_aquisitivo + inicio1
+                policial_id_row = row["policial_id"] if hasattr(row, "keys") else row[0]
+                periodo_aquisitivo_row = row["periodo_aquisitivo"] if hasattr(row, "keys") else row[1]
+                inicio1_row = row["inicio1"] if hasattr(row, "keys") else row[2]
+                chave_ferias = f"{policial_id_row}_{periodo_aquisitivo_row}_{inicio1_row}"
+                
+                tem_conflito = chave_ferias in conflitos
+                cor_linha = None
+                indicador_conflito = ""
+                
+                if tem_conflito:
+                    # Criar indicador de conflito com quebra de linha (sem destaque amarelo)
+                    conflitos_linha = conflitos[chave_ferias]
+                    indicadores = []
+                    for conflito in conflitos_linha:
+                        indicadores.append(f"⚠️ {conflito['policial']} ({conflito['periodo_conflito']})")
+                    indicador_conflito = "\n".join(indicadores)
+                
+                # Aplicar cor de seleção se a linha estiver selecionada
+                if self.selected_row_index == idx:
+                    cor_linha = ft.Colors.GREY_200
+                
+                # Criar células da tabela com larguras otimizadas e texto alinhado à esquerda
+                celulas = [
+                    ft.DataCell(
+                        ft.Text(policial_qra_row, no_wrap=True, text_align=ft.TextAlign.LEFT)
+                    ),
+                    ft.DataCell(
+                        ft.Text(policial_matricula_row, no_wrap=True, text_align=ft.TextAlign.LEFT)
+                    ),
+                    ft.DataCell(
+                        ft.Text(formatar_periodo(inicio1, fim1), no_wrap=True, text_align=ft.TextAlign.LEFT)
+                    ),
+                    ft.DataCell(
+                        ft.Text(formatar_periodo(inicio2, fim2), no_wrap=True, text_align=ft.TextAlign.LEFT)
+                    ),
+                    ft.DataCell(
+                        ft.Text(formatar_periodo(inicio3, fim3), no_wrap=True, text_align=ft.TextAlign.LEFT)
+                    ),
+                    ft.DataCell(
+                        ft.Text(f"{total_dias} dias", no_wrap=True, text_align=ft.TextAlign.LEFT)
+                    ),
+                    ft.DataCell(
+                        ft.Text(
+                            indicador_conflito if indicador_conflito else "-", 
+                            color=ft.Colors.RED if indicador_conflito else ft.Colors.BLACK, 
+                            size=10,
+                            no_wrap=False,  # Permite quebra de linha apenas aqui
+                            text_align=ft.TextAlign.LEFT
+                        )
+                    ),
+                ]
+                
                 dr = ft.DataRow(
                     selected=(self.selected_row_index == idx),
                     on_select_changed=on_row_select,
-                    color=ft.Colors.GREY_200 if self.selected_row_index == idx else None,
-                    cells=[
-                        ft.DataCell(ft.Text(policial_nome_row)),
-                        ft.DataCell(ft.Text(policial_matricula_row)),
-                        ft.DataCell(ft.Text(str(periodo_aquisitivo))),
-                        ft.DataCell(ft.Text(formatar_periodo(inicio1, fim1))),
-                        ft.DataCell(ft.Text(formatar_periodo(inicio2, fim2))),
-                        ft.DataCell(ft.Text(formatar_periodo(inicio3, fim3))),
-                        ft.DataCell(ft.Text(f"{total_dias} dias")),
-                    ]
+                    color=cor_linha,
+                    cells=celulas
                 )
                 tabela.rows.append(dr)
                 self.tabela_rows.append(dr)

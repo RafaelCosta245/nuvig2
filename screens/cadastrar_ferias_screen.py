@@ -154,7 +154,7 @@ class CadastrarFeriasScreen(BaseScreen):
             try:
                 # Buscar todos os policiais da mesma equipe (primeira letra da escala)
                 query_policiais_equipe = """
-                    SELECT p.id, p.nome, p.escala 
+                    SELECT p.id, p.qra, p.escala 
                     FROM policiais p 
                     WHERE SUBSTR(p.escala, 1, 1) = ? AND p.id != ?
                 """
@@ -166,7 +166,7 @@ class CadastrarFeriasScreen(BaseScreen):
                 # Para cada policial da equipe, verificar suas férias
                 for policial in policiais_equipe:
                     policial_id_conflito = policial["id"] if hasattr(policial, "keys") else policial[0]
-                    policial_nome = policial["nome"] if hasattr(policial, "keys") else policial[1]
+                    policial_qra = policial["qra"] if hasattr(policial, "keys") else policial[1]
                     
                     # Buscar férias deste policial
                     query_ferias = """
@@ -184,7 +184,7 @@ class CadastrarFeriasScreen(BaseScreen):
                                 periodos_novos, 
                                 ferias["inicio1"], 
                                 ferias["fim1"], 
-                                policial_nome, 
+                                policial_qra, 
                                 "Período 1"
                             )
                             if conflito:
@@ -196,7 +196,7 @@ class CadastrarFeriasScreen(BaseScreen):
                                 periodos_novos, 
                                 ferias["inicio2"], 
                                 ferias["fim2"], 
-                                policial_nome, 
+                                policial_qra, 
                                 "Período 2"
                             )
                             if conflito:
@@ -208,7 +208,7 @@ class CadastrarFeriasScreen(BaseScreen):
                                 periodos_novos, 
                                 ferias["inicio3"], 
                                 ferias["fim3"], 
-                                policial_nome, 
+                                policial_qra, 
                                 "Período 3"
                             )
                             if conflito:
@@ -220,7 +220,7 @@ class CadastrarFeriasScreen(BaseScreen):
                 print(f"Erro ao verificar conflitos: {e}")
                 return conflitos
 
-        def verificar_conflito_periodo(periodos_novos, inicio_existente, fim_existente, policial_nome, periodo_nome):
+        def verificar_conflito_periodo(periodos_novos, inicio_existente, fim_existente, policial_qra, periodo_nome):
             """
             Verifica se algum dos períodos novos conflita com um período existente
             
@@ -228,7 +228,7 @@ class CadastrarFeriasScreen(BaseScreen):
                 periodos_novos: Lista de tuplas (inicio, fim) dos períodos a serem cadastrados
                 inicio_existente: Data início do período existente (formato YYYY-MM-DD)
                 fim_existente: Data fim do período existente (formato YYYY-MM-DD)
-                policial_nome: Nome do policial que tem o período existente
+                policial_qra: QRA do policial que tem o período existente
                 periodo_nome: Nome do período (ex: "Período 1")
             
             Returns:
@@ -257,8 +257,8 @@ class CadastrarFeriasScreen(BaseScreen):
                         data_fim_conflito = min(fim_novo_dt, fim_existente_dt)
                         
                         return {
-                            "policial_nome": policial_nome,
-                            "periodo_conflito": f"{periodo_nome} do policial {policial_nome}",
+                            "policial_nome": policial_qra,
+                            "periodo_conflito": f"{periodo_nome} do policial {policial_qra}",
                             "data_inicio_conflito": data_inicio_conflito.strftime("%d/%m/%Y"),
                             "data_fim_conflito": data_fim_conflito.strftime("%d/%m/%Y"),
                             "periodo_novo": f"Período {i}",

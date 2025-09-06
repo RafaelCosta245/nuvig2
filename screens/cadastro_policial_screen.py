@@ -105,6 +105,7 @@ class CadastroPolicialScreen(BaseScreen):
             border_radius=12,
             bgcolor=ft.Colors.WHITE,
             width=600
+
         )
 
         return ft.Column(

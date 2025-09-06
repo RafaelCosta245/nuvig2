@@ -36,13 +36,13 @@ class DatabaseManager:
             print(f"Erro ao buscar policial por matrícula: {e}")
             return None
 
-    def atualizar_policial(self, matricula: str, nome: str, cargo: str, lotacao: str) -> bool:
+    def atualizar_policial(self, matricula: str, nome: str, qra: str, escala: str, situacao: str, inicio: str, unidade: str) -> bool:
         """Atualiza os dados de um policial pela matrícula"""
         try:
             command = """
-                UPDATE policiais SET nome = ?, qra = ?, escala = ? WHERE matricula = ?
+                UPDATE policiais SET nome = ?, qra = ?, escala = ?, situacao = ?, inicio = ?, unidade = ? WHERE matricula = ?
             """
-            return self.execute_command(command, (nome, cargo, lotacao, matricula))
+            return self.execute_command(command, (nome, qra, escala, situacao, inicio, unidade, matricula))
         except Exception as e:
             print(f"Erro ao atualizar policial: {e}")
             return False
@@ -54,7 +54,7 @@ class DatabaseManager:
     def init_database(self):
         """Inicializa o banco de dados e cria as tabelas necessárias"""
         try:
-            self.connection = sqlite3.connect(self.db_path)
+            self.connection = sqlite3.connect(self.db_path, check_same_thread=False)
             self.connection.row_factory = sqlite3.Row
             
             # Removido: self._create_tables() para não criar tabelas automaticamente
@@ -193,6 +193,10 @@ class DatabaseManager:
     def execute_query(self, query: str, params: tuple = ()) -> List[sqlite3.Row]:
         """Executa uma consulta SELECT e retorna os resultados"""
         try:
+            # Garantir que a conexão esteja ativa
+            if not self.connection:
+                self.init_database()
+            
             cursor = self.connection.cursor()
             cursor.execute(query, params)
             self.last_error = None
@@ -205,6 +209,10 @@ class DatabaseManager:
     def execute_command(self, command: str, params: tuple = ()) -> bool:
         """Executa um comando INSERT, UPDATE ou DELETE"""
         try:
+            # Garantir que a conexão esteja ativa
+            if not self.connection:
+                self.init_database()
+            
             cursor = self.connection.cursor()
             cursor.execute(command, params)
             self.connection.commit()
