@@ -337,13 +337,253 @@ class ConsultarFeriasScreen(BaseScreen):
             ),
             on_click=apagar_ferias
         )
+        # Função para editar as férias selecionadas
+        def editar_ferias(e):
+            if self.selected_row_index is None:
+                show_alert_dialog(e.control.page, "Selecione uma linha para editar!", success=False)
+                return
+            
+            # Obter os dados das férias selecionadas
+            ferias_selecionada = self.result_ferias[self.selected_row_index]
+            
+            # Obter dados para o diálogo
+            if hasattr(ferias_selecionada, "keys"):
+                policial_id = ferias_selecionada["policial_id"]
+                periodo_aquisitivo = ferias_selecionada["periodo_aquisitivo"]
+                inicio1 = ferias_selecionada["inicio1"]
+                fim1 = ferias_selecionada["fim1"]
+                inicio2 = ferias_selecionada["inicio2"]
+                fim2 = ferias_selecionada["fim2"]
+                inicio3 = ferias_selecionada["inicio3"]
+                fim3 = ferias_selecionada["fim3"]
+            else:
+                policial_id = ferias_selecionada[0]
+                periodo_aquisitivo = ferias_selecionada[1]
+                inicio1 = ferias_selecionada[2]
+                fim1 = ferias_selecionada[3]
+                inicio2 = ferias_selecionada[4]
+                fim2 = ferias_selecionada[5]
+                inicio3 = ferias_selecionada[6]
+                fim3 = ferias_selecionada[7]
+            
+            # Obter nome do policial
+            query_nome = "SELECT nome FROM policiais WHERE id = ?"
+            res_nome = self.app.db.execute_query(query_nome, (policial_id,))
+            policial_nome = res_nome[0]["nome"] if res_nome and hasattr(res_nome[0], "keys") else res_nome[0][0] if res_nome else "Desconhecido"
+            
+            # Função para converter data do formato SQL para DD/MM/YYYY
+            def sql_to_display_date(sql_date):
+                if not sql_date:
+                    return ""
+                try:
+                    from datetime import datetime
+                    date_obj = datetime.strptime(sql_date, "%Y-%m-%d")
+                    return date_obj.strftime("%d/%m/%Y")
+                except:
+                    return sql_date
+            
+            # Campos de entrada para edição
+            field_periodo_aquisitivo = ft.TextField(
+                label="Período Aquisitivo",
+                value=str(periodo_aquisitivo),
+                width=200
+            )
+            
+            field_inicio1 = ft.TextField(
+                label="Início Período 1",
+                value=sql_to_display_date(inicio1),
+                width=200,
+                hint_text="DD/MM/YYYY"
+            )
+            
+            field_fim1 = ft.TextField(
+                label="Fim Período 1",
+                value=sql_to_display_date(fim1),
+                width=200,
+                hint_text="DD/MM/YYYY"
+            )
+            
+            field_inicio2 = ft.TextField(
+                label="Início Período 2",
+                value=sql_to_display_date(inicio2),
+                width=200,
+                hint_text="DD/MM/YYYY"
+            )
+            
+            field_fim2 = ft.TextField(
+                label="Fim Período 2",
+                value=sql_to_display_date(fim2),
+                width=200,
+                hint_text="DD/MM/YYYY"
+            )
+            
+            field_inicio3 = ft.TextField(
+                label="Início Período 3",
+                value=sql_to_display_date(inicio3),
+                width=200,
+                hint_text="DD/MM/YYYY"
+            )
+            
+            field_fim3 = ft.TextField(
+                label="Fim Período 3",
+                value=sql_to_display_date(fim3),
+                width=200,
+                hint_text="DD/MM/YYYY"
+            )
+            
+            # Função para converter data do formato DD/MM/YYYY para SQL
+            def display_to_sql_date(display_date):
+                if not display_date or display_date.strip() == "":
+                    return None
+                try:
+                    from datetime import datetime
+                    date_obj = datetime.strptime(display_date.strip(), "%d/%m/%Y")
+                    return date_obj.strftime("%Y-%m-%d")
+                except:
+                    return None
+            
+            # Função para calcular dias entre duas datas (mesma função do cadastro)
+            def calcular_dias_edicao(data_inicio, data_fim):
+                if not data_inicio or not data_fim:
+                    return 0
+                try:
+                    from datetime import datetime
+                    inicio = datetime.strptime(data_inicio, "%d/%m/%Y")
+                    fim = datetime.strptime(data_fim, "%d/%m/%Y")
+                    return (fim - inicio).days + 1  # +1 porque inclui ambos os dias
+                except:
+                    return 0
+            
+            # Função para mostrar erro de período (mesma do cadastro)
+            def mostrar_erro_periodo_edicao(page):
+                def fechar_dialogo(e):
+                    page.close(dialogo_erro)
+                
+                dialogo_erro = ft.AlertDialog(
+                    modal=True,
+                    title=ft.Text("Período de Férias Inválido", color=ft.Colors.RED, weight=ft.FontWeight.BOLD),
+                    content=ft.Text(
+                        "O total de dias de férias deve ser exatamente 30 dias.\n\n"
+                        "Você pode dividir em:\n"
+                        "• 1 período de 30 dias\n"
+                        "• 2 períodos de 15 dias cada\n"
+                        "• 3 períodos de 10 dias cada\n",
+                        size=14
+                    ),
+                    actions=[
+                        ft.TextButton("Entendi", on_click=fechar_dialogo)
+                    ],
+                    actions_alignment=ft.MainAxisAlignment.END,
+                )
+                
+                page.open(dialogo_erro)
+            
+            # Função para salvar as alterações
+            def salvar_alteracoes(e):
+                try:
+                    # Validar período aquisitivo
+                    if not field_periodo_aquisitivo.value.strip():
+                        show_alert_dialog(e.control.page, "Período aquisitivo é obrigatório!", success=False)
+                        return
+                    
+                    # Validar se pelo menos o período 1 foi preenchido
+                    if not field_inicio1.value.strip() or not field_fim1.value.strip():
+                        show_alert_dialog(e.control.page, "Período 1 é obrigatório!", success=False)
+                        return
+                    
+                    # Calcular dias de cada período (usando formato DD/MM/YYYY)
+                    dias_periodo1 = calcular_dias_edicao(field_inicio1.value, field_fim1.value)
+                    dias_periodo2 = calcular_dias_edicao(field_inicio2.value, field_fim2.value) if field_inicio2.value and field_fim2.value else 0
+                    dias_periodo3 = calcular_dias_edicao(field_inicio3.value, field_fim3.value) if field_inicio3.value and field_fim3.value else 0
+                    total_dias = dias_periodo1 + dias_periodo2 + dias_periodo3
+                    
+                    # Validar se o total é exatamente 30 dias (mesma validação do cadastro)
+                    if total_dias != 30:
+                        mostrar_erro_periodo_edicao(e.control.page)
+                        return
+                    
+                    # Converter datas para formato SQL
+                    novo_inicio1 = display_to_sql_date(field_inicio1.value)
+                    novo_fim1 = display_to_sql_date(field_fim1.value)
+                    novo_inicio2 = display_to_sql_date(field_inicio2.value)
+                    novo_fim2 = display_to_sql_date(field_fim2.value)
+                    novo_inicio3 = display_to_sql_date(field_inicio3.value)
+                    novo_fim3 = display_to_sql_date(field_fim3.value)
+                    
+                    # Query de atualização
+                    update_query = """
+                        UPDATE ferias 
+                        SET periodo_aquisitivo = ?, 
+                            inicio1 = ?, fim1 = ?, 
+                            inicio2 = ?, fim2 = ?, 
+                            inicio3 = ?, fim3 = ?
+                        WHERE policial_id = ? AND periodo_aquisitivo = ? AND inicio1 = ?
+                    """
+                    
+                    # Executar a atualização
+                    success = self.app.db.execute_command(
+                        update_query, 
+                        (
+                            field_periodo_aquisitivo.value.strip(),
+                            novo_inicio1, novo_fim1,
+                            novo_inicio2, novo_fim2,
+                            novo_inicio3, novo_fim3,
+                            policial_id, periodo_aquisitivo, inicio1
+                        )
+                    )
+                    
+                    if success:
+                        show_alert_dialog(e.control.page, "Férias atualizadas com sucesso!", success=True)
+                        # Atualizar a tabela
+                        atualizar_tabela()
+                    else:
+                        show_alert_dialog(e.control.page, "Erro ao atualizar as férias!", success=False)
+                        
+                except Exception as ex:
+                    show_alert_dialog(e.control.page, f"Erro ao salvar: {str(ex)}", success=False)
+                
+                # Fechar o diálogo
+                e.control.page.close(dlg_edicao)
+            
+            def cancelar_edicao(e):
+                e.control.page.close(dlg_edicao)
+            
+            # Criar o diálogo de edição
+            dlg_edicao = ft.AlertDialog(
+                modal=True,
+                title=ft.Text("Editar Férias", color=ft.Colors.BLACK),
+                content=ft.Container(
+                    content=ft.Column([
+                        ft.Text(f"Policial: {policial_nome}", weight=ft.FontWeight.BOLD),
+                        ft.Container(height=10),
+                        field_periodo_aquisitivo,
+                        ft.Container(height=8),
+                        ft.Row([field_inicio1, field_fim1], spacing=10),
+                        ft.Container(height=8),
+                        ft.Row([field_inicio2, field_fim2], spacing=10),
+                        ft.Container(height=8),
+                        ft.Row([field_inicio3, field_fim3], spacing=10),
+                        ft.Container(height=10),
+                    ], scroll=ft.ScrollMode.AUTO),
+                    width=500,
+                    height=450,
+                ),
+                actions=[
+                    ft.TextButton("Cancelar", on_click=cancelar_edicao),
+                    ft.TextButton("Salvar", on_click=salvar_alteracoes, style=ft.ButtonStyle(color=ft.Colors.GREEN)),
+                ],
+                actions_alignment=ft.MainAxisAlignment.END,
+            )
+            
+            e.control.page.open(dlg_edicao)
+
         btn_editar = ft.TextButton(
             "Editar",
             style=ft.ButtonStyle(
                 color=ft.Colors.BLACK,
                 text_style=ft.TextStyle(size=12)
             ),
-            on_click=lambda e: print("Editar acionado")
+            on_click=editar_ferias
         )
         btn_gravar = ft.TextButton(
             "Gravar",

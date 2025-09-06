@@ -368,6 +368,7 @@ class CadastrarFeriasScreen(BaseScreen):
         periodo_aquisitivo = ft.TextField(
             label="Período Aquisitivo (ex: 2024/2025)",
             width=200,
+            hint_text="aaaa/aaaa",
             #input_filter=ft.NumbersOnlyInputFilter(),
             #max_length=4
         )
