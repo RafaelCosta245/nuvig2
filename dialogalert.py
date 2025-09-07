@@ -1,3 +1,5 @@
+import flet as ft
+
 def show_alert_dialog(page, mensagem, success=True):
     dlg = ft.AlertDialog(
         modal=True,
@@ -9,7 +11,6 @@ def show_alert_dialog(page, mensagem, success=True):
         actions_alignment=ft.MainAxisAlignment.END,
     )
     page.open(dlg)
-import flet as ft
 
 
 def main(page: ft.Page):

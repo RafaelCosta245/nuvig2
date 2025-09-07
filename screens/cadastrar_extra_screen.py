@@ -39,7 +39,7 @@ class CadastrarExtraScreen(BaseScreen):
         interticio = ft.Text(value="Intertício:",weight=ft.FontWeight.BOLD, size=14)
         
         # Text widget para mostrar as horas disponíveis (será atualizado dinamicamente)
-        horas_disp_text = ft.Text(value='986 horas', weight=ft.FontWeight.BOLD, size=14)
+        horas_disp_text = ft.Text(value='0 horas', weight=ft.FontWeight.BOLD, size=14)
         
         c_horas_disp = ft.Container(
             content=ft.Row(
@@ -59,7 +59,7 @@ class CadastrarExtraScreen(BaseScreen):
                 # 1. Buscar ID do intertício pelo nome
                 interticio_nome = interticio_val.value.strip()
                 if not interticio_nome:
-                    horas_disp_text.value = "986 horas"
+                    horas_disp_text.value = "0 horas"
                     return
                 
                 query_interticio_id = "SELECT id FROM interticios WHERE nome = ?"
@@ -103,7 +103,7 @@ class CadastrarExtraScreen(BaseScreen):
                 
             except Exception as e:
                 print(f"Erro ao calcular horas disponíveis: {e}")
-                horas_disp_text.value = "986 horas"
+                horas_disp_text.value = "0 horas"
         
         def atualizar_interticio(e=None):
             val = data.value.strip()
