@@ -77,7 +77,7 @@ class ExtrasScreen(BaseScreen):
                         ft.TextButton(
                             text="Abrir",
                             icon=ft.Icons.ARROW_FORWARD,
-                            on_click=lambda e: self.navigate_to("consultar_extras"),
+                            #on_click=lambda e: self.navigate_to("consultar_extras"),
                         ),
                     ],
                     horizontal_alignment=ft.CrossAxisAlignment.START,
@@ -91,13 +91,37 @@ class ExtrasScreen(BaseScreen):
                 height=140
             )
 
+        def card_cadastro_horas() -> ft.Control:
+            return ft.Container(
+                content=ft.Column(
+                    controls=[
+                        ft.Text("🕒➕ Banco de extras", size=18, weight=ft.FontWeight.BOLD),
+                        ft.Text("Adicione horas ao banco", size=12, color=ft.Colors.GREY),
+                        ft.Container(height=10),
+                        ft.TextButton(
+                            text="Abrir",
+                            icon=ft.Icons.ARROW_FORWARD,
+                            on_click=lambda e: self.navigate_to("banco_extras"),
+                        ),
+                    ],
+                    horizontal_alignment=ft.CrossAxisAlignment.START,
+                    spacing=5,
+                ),
+                padding=ft.padding.all(8),
+                border=ft.border.all(1, ft.Colors.GREY),
+                border_radius=12,
+                bgcolor=ft.Colors.WHITE,
+                width=260,
+                height=140
+            )
 
         return ft.Column([
             header,
             ft.Row([
                 card_cadastrar_extra(),
                 card_consultar_extras(),
-                card_relatorios()
+                card_relatorios(),
+                card_cadastro_horas()
             ], spacing=20, alignment=ft.MainAxisAlignment.CENTER)
         ], horizontal_alignment=ft.CrossAxisAlignment.CENTER)
 

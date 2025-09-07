@@ -4,6 +4,7 @@ from screens.calendario_screen import CalendarioScreen
 from screens.cadastro_screen import CadastroScreen
 from screens.cadastro_policial_screen import CadastroPolicialScreen
 from screens.extras_screen import ExtrasScreen
+from screens.banco_extras import BancoExtrasScreen
 from screens.permutas_screen import PermutasScreen
 from screens.compensacoes_screen import CompensacoesScreen
 from screens.consultar_compensacoes_screen import ConsultarCompensacoesScreen
@@ -100,6 +101,7 @@ class MainApp:
                 "cadastro": CadastroScreen(self),
                 "cadastro_policial": CadastroPolicialScreen(self),
                 "extras": ExtrasScreen(self),
+                "banco_extras": BancoExtrasScreen(self),
                 "permutas": PermutasScreen(self),
                 "compensacoes": CompensacoesScreen(self),
                 "cadastrar_compensacao": CadastrarCompensacaoScreen(self),
