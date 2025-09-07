@@ -27,7 +27,22 @@ class EdicaoRegistrosScreen:
         self.escala_field = ft.Dropdown(label="Escala", width=self.nome_field.width, options=[ft.dropdown.Option(e) for e in escala_options])
         
         self.situacao_field = ft.Dropdown(label="Situação", width=self.nome_field.width, options=[ft.dropdown.Option("ativo"), ft.dropdown.Option("inativo")])
-        self.data_inicio_field = ft.TextField(label="Data de Início", width=self.nome_field.width)
+        self.data_inicio_field = ft.TextField(label="Data de Início", width=self.nome_field.width, hint_text="dd/mm/aaaa")
+        
+        # Função para aplicar máscara de data
+        def mascara_data_inicio(e):
+            valor = ''.join([c for c in self.data_inicio_field.value if c.isdigit()])
+            novo_valor = ''
+            if len(valor) > 0:
+                novo_valor += valor[:2]
+            if len(valor) > 2:
+                novo_valor += '/' + valor[2:4]
+            if len(valor) > 4:
+                novo_valor += '/' + valor[4:8]
+            self.data_inicio_field.value = novo_valor
+            e.control.page.update()
+        
+        self.data_inicio_field.on_change = mascara_data_inicio
         # Dropdown de unidade
         self.id_field = ft.TextField(label="ID", width=self.nome_field.width, read_only=True)
         unidades_opcoes = [ft.dropdown.Option(u) for u in self.db.buscar_unidades()]

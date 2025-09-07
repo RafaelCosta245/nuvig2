@@ -238,6 +238,34 @@ class CadastrarCompensacaoScreen(BaseScreen):
 		)
 		data1 = ft.TextField(label="Compensação", width=200, hint_text="dd/mm/aaaa")
 		data2 = ft.TextField(label="A compensar", width=200, hint_text="dd/mm/aaaa")
+		
+		# Função para aplicar máscara de data
+		def mascara_data1(e):
+			valor = ''.join([c for c in data1.value if c.isdigit()])
+			novo_valor = ''
+			if len(valor) > 0:
+				novo_valor += valor[:2]
+			if len(valor) > 2:
+				novo_valor += '/' + valor[2:4]
+			if len(valor) > 4:
+				novo_valor += '/' + valor[4:8]
+			data1.value = novo_valor
+			e.control.page.update()
+		
+		def mascara_data2(e):
+			valor = ''.join([c for c in data2.value if c.isdigit()])
+			novo_valor = ''
+			if len(valor) > 0:
+				novo_valor += valor[:2]
+			if len(valor) > 2:
+				novo_valor += '/' + valor[2:4]
+			if len(valor) > 4:
+				novo_valor += '/' + valor[4:8]
+			data2.value = novo_valor
+			e.control.page.update()
+		
+		data1.on_change = mascara_data1
+		data2.on_change = mascara_data2
 
 		import datetime
 		

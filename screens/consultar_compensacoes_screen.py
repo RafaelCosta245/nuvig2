@@ -32,7 +32,21 @@ class ConsultarCompensacoesScreen(BaseScreen):
 		    ),
 		    on_click=lambda e: print("pesquisa por data de compensação")
 		)
-		field_data_compensacao = ft.TextField(label="Data Compensação", width=200)
+		field_data_compensacao = ft.TextField(label="Data Compensação", width=200, hint_text="dd/mm/aaaa")
+		
+		# Função para aplicar máscara de data compensação
+		def mascara_data_compensacao(e):
+			valor = ''.join([c for c in field_data_compensacao.value if c.isdigit()])
+			novo_valor = ''
+			if len(valor) > 0:
+				novo_valor += valor[:2]
+			if len(valor) > 2:
+				novo_valor += '/' + valor[2:4]
+			if len(valor) > 4:
+				novo_valor += '/' + valor[4:8]
+			field_data_compensacao.value = novo_valor
+			e.control.page.update()
+		
 		col_data_compensacao = ft.Column([txt_pesq_data_compensacao, field_data_compensacao], spacing=8, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
 
 		txt_pesq_data_a_compensar = ft.TextButton(
@@ -43,7 +57,21 @@ class ConsultarCompensacoesScreen(BaseScreen):
 		    ),
 		    on_click=lambda e: print("pesquisa por data a compensar")
 		)
-		field_data_a_compensar = ft.TextField(label="Data A Compensar", width=200)
+		field_data_a_compensar = ft.TextField(label="Data A Compensar", width=200, hint_text="dd/mm/aaaa")
+		
+		# Função para aplicar máscara de data a compensar
+		def mascara_data_a_compensar(e):
+			valor = ''.join([c for c in field_data_a_compensar.value if c.isdigit()])
+			novo_valor = ''
+			if len(valor) > 0:
+				novo_valor += valor[:2]
+			if len(valor) > 2:
+				novo_valor += '/' + valor[2:4]
+			if len(valor) > 4:
+				novo_valor += '/' + valor[4:8]
+			field_data_a_compensar.value = novo_valor
+			e.control.page.update()
+		
 		col_data_a_compensar = ft.Column([txt_pesq_data_a_compensar, field_data_a_compensar], spacing=8, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
 
 		filtros_row = ft.Row([
@@ -188,8 +216,19 @@ class ConsultarCompensacoesScreen(BaseScreen):
 			tabela.update()
 
 		field_policial.on_change = atualizar_tabela
-		field_data_compensacao.on_change = atualizar_tabela
-		field_data_a_compensar.on_change = atualizar_tabela
+		
+		# Função combinada para aplicar máscara e atualizar tabela - compensação
+		def mascara_e_atualizar_compensacao(e):
+			mascara_data_compensacao(e)
+			atualizar_tabela()
+		
+		# Função combinada para aplicar máscara e atualizar tabela - a compensar
+		def mascara_e_atualizar_a_compensar(e):
+			mascara_data_a_compensar(e)
+			atualizar_tabela()
+		
+		field_data_compensacao.on_change = mascara_e_atualizar_compensacao
+		field_data_a_compensar.on_change = mascara_e_atualizar_a_compensar
 
 		# Função para apagar a compensação selecionada
 		def apagar_compensacao(e):

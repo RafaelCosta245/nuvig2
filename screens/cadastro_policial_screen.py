@@ -22,7 +22,22 @@ class CadastroPolicialScreen(BaseScreen):
         self.campo_nome = ft.TextField(label="Nome Completo", width=410, border_radius=4)
         self.campo_qra = ft.TextField(label="QRA", width=200, border_radius=4)
         self.campo_matricula = ft.TextField(label="Matrícula", width=200, border_radius=4,max_length=8)
-        self.campo_inicio = ft.TextField(label="Último Plantão", width=200, border_radius=4)
+        self.campo_inicio = ft.TextField(label="Último Plantão", width=200, border_radius=4, hint_text="dd/mm/aaaa")
+        
+        # Função para aplicar máscara de data
+        def mascara_data_inicio(e):
+            valor = ''.join([c for c in self.campo_inicio.value if c.isdigit()])
+            novo_valor = ''
+            if len(valor) > 0:
+                novo_valor += valor[:2]
+            if len(valor) > 2:
+                novo_valor += '/' + valor[2:4]
+            if len(valor) > 4:
+                novo_valor += '/' + valor[4:8]
+            self.campo_inicio.value = novo_valor
+            e.control.page.update()
+        
+        self.campo_inicio.on_change = mascara_data_inicio
 
 
         escala_options = ["A", "B", "C", "D", "ABC", "BCD", "CDA", "DAB", "AB", "BC", "CD", "DA"]
@@ -94,7 +109,7 @@ class CadastroPolicialScreen(BaseScreen):
                     ft.Container(height=5),
                     ft.Row(controls=[self.campo_inicio, self.campo_unidade],
                            alignment=ft.MainAxisAlignment.CENTER,
-                           spacing=5),
+                           spacing=10),
                     ft.Container(height=10),
                     botoes
                 ],

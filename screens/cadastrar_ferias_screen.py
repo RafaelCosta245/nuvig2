@@ -380,6 +380,87 @@ class CadastrarFeriasScreen(BaseScreen):
         data_fim2 = ft.TextField(label="Data Fim", width=200, hint_text="dd/mm/aaaa")
         data_inicio3 = ft.TextField(label="Data Início", width=200, hint_text="dd/mm/aaaa")
         data_fim3 = ft.TextField(label="Data Fim", width=200, hint_text="dd/mm/aaaa")
+        
+        # Funções para aplicar máscara de data
+        def mascara_data_inicio1(e):
+            valor = ''.join([c for c in data_inicio1.value if c.isdigit()])
+            novo_valor = ''
+            if len(valor) > 0:
+                novo_valor += valor[:2]
+            if len(valor) > 2:
+                novo_valor += '/' + valor[2:4]
+            if len(valor) > 4:
+                novo_valor += '/' + valor[4:8]
+            data_inicio1.value = novo_valor
+            e.control.page.update()
+        
+        def mascara_data_fim1(e):
+            valor = ''.join([c for c in data_fim1.value if c.isdigit()])
+            novo_valor = ''
+            if len(valor) > 0:
+                novo_valor += valor[:2]
+            if len(valor) > 2:
+                novo_valor += '/' + valor[2:4]
+            if len(valor) > 4:
+                novo_valor += '/' + valor[4:8]
+            data_fim1.value = novo_valor
+            e.control.page.update()
+        
+        def mascara_data_inicio2(e):
+            valor = ''.join([c for c in data_inicio2.value if c.isdigit()])
+            novo_valor = ''
+            if len(valor) > 0:
+                novo_valor += valor[:2]
+            if len(valor) > 2:
+                novo_valor += '/' + valor[2:4]
+            if len(valor) > 4:
+                novo_valor += '/' + valor[4:8]
+            data_inicio2.value = novo_valor
+            e.control.page.update()
+        
+        def mascara_data_fim2(e):
+            valor = ''.join([c for c in data_fim2.value if c.isdigit()])
+            novo_valor = ''
+            if len(valor) > 0:
+                novo_valor += valor[:2]
+            if len(valor) > 2:
+                novo_valor += '/' + valor[2:4]
+            if len(valor) > 4:
+                novo_valor += '/' + valor[4:8]
+            data_fim2.value = novo_valor
+            e.control.page.update()
+        
+        def mascara_data_inicio3(e):
+            valor = ''.join([c for c in data_inicio3.value if c.isdigit()])
+            novo_valor = ''
+            if len(valor) > 0:
+                novo_valor += valor[:2]
+            if len(valor) > 2:
+                novo_valor += '/' + valor[2:4]
+            if len(valor) > 4:
+                novo_valor += '/' + valor[4:8]
+            data_inicio3.value = novo_valor
+            e.control.page.update()
+        
+        def mascara_data_fim3(e):
+            valor = ''.join([c for c in data_fim3.value if c.isdigit()])
+            novo_valor = ''
+            if len(valor) > 0:
+                novo_valor += valor[:2]
+            if len(valor) > 2:
+                novo_valor += '/' + valor[2:4]
+            if len(valor) > 4:
+                novo_valor += '/' + valor[4:8]
+            data_fim3.value = novo_valor
+            e.control.page.update()
+        
+        # Conectar as máscaras aos campos
+        data_inicio1.on_change = mascara_data_inicio1
+        data_fim1.on_change = mascara_data_fim1
+        data_inicio2.on_change = mascara_data_inicio2
+        data_fim2.on_change = mascara_data_fim2
+        data_inicio3.on_change = mascara_data_inicio3
+        data_fim3.on_change = mascara_data_fim3
 
         # Labels dos períodos e contador
         periodo1_label = ft.Text("Período 1", size=16, weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK)

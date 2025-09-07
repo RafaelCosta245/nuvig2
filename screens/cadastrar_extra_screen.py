@@ -33,6 +33,116 @@ class CadastrarExtraScreen(BaseScreen):
         inicio = ft.TextField(label="Início", width=200, hint_text="hh:mm")
         fim = ft.TextField(label="Fim", width=200, hint_text="hh:mm")
         quant_horas = ft.TextField(label="Quant. Horas", width=200)
+        # horas_disp = ft.Text(value="Horas disponíveis", text_align=ft.TextAlign.LEFT)
+        # interticio = ft.Text(value="Interticio:", text_align=ft.TextAlign.LEFT)
+        horas_disp = ft.Text(value='Disponíveis:',weight=ft.FontWeight.BOLD, size=14 )
+        interticio = ft.Text(value="Intertício:",weight=ft.FontWeight.BOLD, size=14)
+        
+        # Text widget para mostrar as horas disponíveis (será atualizado dinamicamente)
+        horas_disp_text = ft.Text(value='986 horas', weight=ft.FontWeight.BOLD, size=14)
+        
+        c_horas_disp = ft.Container(
+            content=ft.Row(
+                controls=[horas_disp, horas_disp_text],
+                alignment=ft.MainAxisAlignment.CENTER),
+            #alignment=ft.alignment.Alignment(-0.5, 0),
+            alignment=ft.alignment.center,
+            width=inicio.width,
+            height=inicio.height,
+            #bgcolor=ft.Colors.ORANGE,
+        )
+        interticio_val = ft.Text(value="", weight=ft.FontWeight.BOLD, size=14)
+        
+        def calcular_horas_disponiveis():
+            """Calcula as horas disponíveis baseado no intertício e operação atual"""
+            try:
+                # 1. Buscar ID do intertício pelo nome
+                interticio_nome = interticio_val.value.strip()
+                if not interticio_nome:
+                    horas_disp_text.value = "986 horas"
+                    return
+                
+                query_interticio_id = "SELECT id FROM interticios WHERE nome = ?"
+                result_interticio_id = self.app.db.execute_query(query_interticio_id, (interticio_nome,))
+                if not result_interticio_id:
+                    horas_disp_text.value = "986 horas"
+                    return
+                
+                interticio_id = result_interticio_id[0]["id"]
+                
+                # 2. Buscar soma das horas na tabela horasextras
+                operacao_val = operacao.value if operacao.value else ""
+                if operacao_val:
+                    query_horasextras = """
+                        SELECT SUM(qty_horas) as total_horas 
+                        FROM horasextras 
+                        WHERE interticio_id = ? AND tipo = ?
+                    """
+                    result_horasextras = self.app.db.execute_query(query_horasextras, (interticio_id, operacao_val))
+                    total_horasextras = result_horasextras[0]["total_horas"] if result_horasextras and result_horasextras[0]["total_horas"] else 0
+                else:
+                    total_horasextras = 0
+                
+                # 3. Buscar soma das horas na tabela extras
+                if operacao_val:
+                    query_extras = """
+                        SELECT SUM(horas) as total_horas 
+                        FROM extras 
+                        WHERE interticio = ? AND operacao = ?
+                    """
+                    result_extras = self.app.db.execute_query(query_extras, (interticio_nome, operacao_val))
+                    total_extras = result_extras[0]["total_horas"] if result_extras and result_extras[0]["total_horas"] else 0
+                else:
+                    total_extras = 0
+                
+                # 4. Calcular diferença: horasextras - extras
+                horas_disponiveis = total_horasextras - total_extras
+                
+                # 5. Atualizar o texto das horas disponíveis
+                horas_disp_text.value = f"{horas_disponiveis} horas"
+                
+            except Exception as e:
+                print(f"Erro ao calcular horas disponíveis: {e}")
+                horas_disp_text.value = "986 horas"
+        
+        def atualizar_interticio(e=None):
+            val = data.value.strip()
+            if len(val) == 10 and '/' in val:
+                partes = val.split("/")
+                data_sql = f"{partes[2]}-{partes[1]}-{partes[0]}"
+                query_interticio = (
+                    "SELECT nome FROM interticios "
+                    "WHERE date(?) BETWEEN date(data_inicial) AND date(data_final) LIMIT 1"
+                )
+                result_interticio = self.app.db.execute_query(query_interticio, (data_sql,))
+                if result_interticio and len(result_interticio) > 0:
+                    if isinstance(result_interticio[0], dict) or hasattr(result_interticio[0], "keys"):
+                        interticio_nome = result_interticio[0]["nome"]
+                    else:
+                        interticio_nome = result_interticio[0][0]
+                    interticio_val.value = interticio_nome
+                else:
+                    interticio_val.value = ""
+            else:
+                interticio_val.value = ""
+            
+            # Calcular horas disponíveis quando o intertício for atualizado
+            calcular_horas_disponiveis()
+            
+            if e:
+                e.control.page.update()
+        data.on_change = atualizar_interticio
+        atualizar_interticio()
+        c_interticio = ft.Container(
+            content=ft.Row(
+                controls=[interticio, interticio_val],
+                alignment=ft.MainAxisAlignment.CENTER)
+            ,
+            width=inicio.width,
+            height=inicio.height,
+            alignment=ft.alignment.center,
+        )
+
 
         # Função para aplicar máscara de data
         def mascara_data(e):
@@ -45,6 +155,7 @@ class CadastrarExtraScreen(BaseScreen):
             if len(valor) > 4:
                 novo_valor += '/' + valor[4:8]
             data.value = novo_valor
+            atualizar_interticio()
             e.control.page.update()
         data.on_change = mascara_data
 
@@ -66,6 +177,10 @@ class CadastrarExtraScreen(BaseScreen):
                 quant_horas.value = "12"
                 inicio.value = "16:00"
                 fim.value = "04:00"
+            
+            # Calcular horas disponíveis quando a operação mudar
+            calcular_horas_disponiveis()
+            
             e.control.page.update()
         operacao.on_change = on_operacao_change
 
@@ -222,11 +337,11 @@ class CadastrarExtraScreen(BaseScreen):
             first_date=datetime.datetime(2020, 1, 1),
             last_date=datetime.datetime(2030, 12, 31),
         )
-        
         def on_date_change(e):
             if datepicker.value:
                 data.value = datepicker.value.strftime("%d/%m/%Y")
                 data.cursor_position = len(data.value)
+                atualizar_interticio()
                 e.control.page.update()
         datepicker.on_change = on_date_change
 
@@ -265,6 +380,9 @@ class CadastrarExtraScreen(BaseScreen):
             ], spacing=40, alignment=ft.MainAxisAlignment.CENTER),
             ft.Row([
                 inicio, fim
+            ], spacing=40, alignment=ft.MainAxisAlignment.CENTER),
+            ft.Row([
+                c_interticio, c_horas_disp
             ], spacing=40, alignment=ft.MainAxisAlignment.CENTER),
         ], spacing=16, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
 

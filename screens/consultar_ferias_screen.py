@@ -43,7 +43,21 @@ class ConsultarFeriasScreen(BaseScreen):
             ),
             on_click=lambda e: print("pesquisa por data")
         )
-        field_data = ft.TextField(label="Data", width=200)
+        field_data = ft.TextField(label="Data", width=200, hint_text="dd/mm/aaaa")
+        
+        # Função para aplicar máscara de data
+        def mascara_data(e):
+            valor = ''.join([c for c in field_data.value if c.isdigit()])
+            novo_valor = ''
+            if len(valor) > 0:
+                novo_valor += valor[:2]
+            if len(valor) > 2:
+                novo_valor += '/' + valor[2:4]
+            if len(valor) > 4:
+                novo_valor += '/' + valor[4:8]
+            field_data.value = novo_valor
+            e.control.page.update()
+        
         col_data = ft.Column([txt_pesq_data, field_data], spacing=8, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
 
         filtros_row = ft.Row([
@@ -401,7 +415,13 @@ class ConsultarFeriasScreen(BaseScreen):
 
         field_policial.on_change = atualizar_tabela
         field_periodo.on_change = atualizar_tabela
-        field_data.on_change = atualizar_tabela
+        
+        # Função combinada para aplicar máscara e atualizar tabela
+        def mascara_e_atualizar(e):
+            mascara_data(e)
+            atualizar_tabela()
+        
+        field_data.on_change = mascara_e_atualizar
 
         # Função para apagar as férias selecionadas
         def apagar_ferias(e):
