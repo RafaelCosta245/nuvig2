@@ -152,3 +152,7 @@ acesso2.db
 logs/
 data/
 *.log
+
+assets/json/client_secrets.json
+assets/json/credentials.json
+credenciais google drive.txt

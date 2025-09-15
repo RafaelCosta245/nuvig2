@@ -13,10 +13,13 @@ from screens.cadastrar_permuta_screen import CadastrarPermutaScreen
 from screens.consultar_permutas_screen import ConsultarPermutasScreen
 from screens.cadastrar_ferias_screen import CadastrarFeriasScreen
 from screens.consultar_ferias_screen import ConsultarFeriasScreen
+from screens.edicao_registros_screen import EdicaoRegistrosScreen
+from screens.ferias_screen import FeriasScreen
+from screens.ausencias_screen import AusenciasScreen
+from screens.cadastrar_extra_screen import CadastrarExtraScreen
+from screens.consultar_extras_screen import ConsultarExtrasScreen
+from screens.disponibilidade_ferias_screen import DisponibilidadeFeriasScreen
 from database.database_manager import DatabaseManager
-from pathlib import Path
-import os, sys, shutil
-
 from pathlib import Path
 import os, sys, shutil, traceback
 
@@ -108,15 +111,14 @@ class MainApp:
                 "consultar_compensacoes": ConsultarCompensacoesScreen(self),
                 "cadastrar_permuta": CadastrarPermutaScreen(self),
                 "consultar_permutas": ConsultarPermutasScreen(self),
-                #"cadastrar_compensacao": __import__("screens.cadastrar_compensacao_screen", fromlist=["CadastrarCompensacaoScreen"]).CadastrarCompensacaoScreen(self),
-                #"consultar_compensacoes": __import__("screens.consultar_compensacoes_screen", fromlist=["ConsultarCompensacoesScreen"]).ConsultarCompensacoesScreen(self),
-                "edicao_registros": __import__("screens.edicao_registros_screen", fromlist=["EdicaoRegistrosScreen"]).EdicaoRegistrosScreen(self),
-                "ferias": __import__("screens.ferias_screen", fromlist=["FeriasScreen"]).FeriasScreen(self),
+                "edicao_registros": EdicaoRegistrosScreen(self),
+                "ferias": FeriasScreen(self),
                 "cadastrar_ferias": CadastrarFeriasScreen(self),
                 "consultar_ferias": ConsultarFeriasScreen(self),
-                "ausencias": __import__("screens.ausencias_screen", fromlist=["AusenciasScreen"]).AusenciasScreen(self),
-                "cadastrar_extra": __import__("screens.cadastrar_extra_screen", fromlist=["CadastrarExtraScreen"]).CadastrarExtraScreen(self),
-                "consultar_extras": __import__("screens.consultar_extras_screen", fromlist=["ConsultarExtrasScreen"]).ConsultarExtrasScreen(self),
+                "ausencias": AusenciasScreen(self),
+                "cadastrar_extra": CadastrarExtraScreen(self),
+                "consultar_extras": ConsultarExtrasScreen(self),
+                "disponibilidade_ferias": DisponibilidadeFeriasScreen(self),
             }
 
             # Container para o conteúdo dinâmico

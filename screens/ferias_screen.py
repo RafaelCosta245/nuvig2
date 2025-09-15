@@ -79,7 +79,7 @@ class FeriasScreen(BaseScreen):
                         ft.TextButton(
                             text="Abrir",
                             icon=ft.Icons.ARROW_FORWARD,
-                            #on_click=lambda e: self.navigate_to("consultar_extras"),
+                            on_click=lambda e: self.navigate_to("disponibilidade_ferias"),
                         ),
                     ],
                     horizontal_alignment=ft.CrossAxisAlignment.START,
