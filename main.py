@@ -16,12 +16,14 @@ from screens.consultar_ferias_screen import ConsultarFeriasScreen
 from screens.edicao_registros_screen import EdicaoRegistrosScreen
 from screens.ferias_screen import FeriasScreen
 from screens.ausencias_screen import AusenciasScreen
+from screens.cadastrar_ausencias_screen import CadastrarAusenciasScreen
+from screens.consultar_ausencias_screen import ConsultarAusenciasScreen
 from screens.cadastrar_extra_screen import CadastrarExtraScreen
 from screens.consultar_extras_screen import ConsultarExtrasScreen
 from screens.disponibilidade_ferias_screen import DisponibilidadeFeriasScreen
 from database.database_manager import DatabaseManager
 from pathlib import Path
-import os, sys, shutil, traceback
+import os, sys, shutil, traceback, json
 
 APP_NAME = "Nuvig"
 DB_NAME  = "nuvig.db"
@@ -73,6 +75,7 @@ class MainApp:
     def __init__(self):
         self.db = DatabaseManager(db_path=str(Path(__file__).parent / "assets" / "db" / "nuvig.db"))
         self.current_screen = None
+        self.output_dir: str | None = None
         
     def main(self, page: ft.Page):
         try:
@@ -97,6 +100,65 @@ class MainApp:
             # Inicializar banco de dados
             self.db.init_database()
 
+            # File picker para escolher diretório de saída (primeira execução)
+            def _ensure_output_dir():
+                try:
+                    # 1) Preferir arquivo em assets/json/app_config.json
+                    config_path = Path(__file__).parent / "assets" / "json" / "app_config.json"
+                    existing = None
+                    if config_path.exists():
+                        try:
+                            with open(config_path, "r", encoding="utf-8") as f:
+                                cfg = json.load(f)
+                                existing = cfg.get("output_dir")
+                        except Exception as ex:
+                            print("[Init] Falha ao ler app_config.json:", ex)
+
+                    # 2) Fallback: system_config no banco
+                    if not existing:
+                        existing = self.db.get_system_config("output_dir")
+
+                    if existing and os.path.isdir(existing):
+                        self.output_dir = existing
+                        print(f"[Init] Diretório de saída: {self.output_dir}")
+                        return
+                except Exception as ex:
+                    print("[Init] Falha ao ler output_dir:", ex)
+
+                def on_pick_result(e: ft.FilePickerResultEvent):
+                    try:
+                        chosen = e.path or ""
+                        if not chosen:
+                            # fallback: Documents/Nuvig
+                            docs = Path(os.path.expanduser("~")) / "Documents" / APP_NAME
+                            docs.mkdir(parents=True, exist_ok=True)
+                            chosen = str(docs)
+                            page.snack_bar = ft.SnackBar(content=ft.Text(f"Pasta não selecionada. Usando padrão: {chosen}"))
+                            page.snack_bar.open = True
+                            page.update()
+                        self.output_dir = chosen
+                        # Persistir em JSON dentro de assets/json
+                        try:
+                            config_path = Path(__file__).parent / "assets" / "json"
+                            config_path.mkdir(parents=True, exist_ok=True)
+                            with open(config_path / "app_config.json", "w", encoding="utf-8") as f:
+                                json.dump({"output_dir": chosen}, f, ensure_ascii=False, indent=2)
+                        except Exception as exw:
+                            print("[Init] Erro ao escrever app_config.json:", exw)
+
+                        # Persistir também no banco (redundância)
+                        self.db.set_system_config("output_dir", chosen, "Diretório de saída para arquivos gerados")
+                        print(f"[Init] Diretório de saída definido: {chosen}")
+                    except Exception as ex2:
+                        print("[Init] Erro ao definir output_dir:", ex2)
+
+                picker = ft.FilePicker(on_result=on_pick_result)
+                page.overlay.append(picker)
+                page.update()
+                picker.get_directory_path(dialog_title="Selecione a pasta para salvar relatórios e arquivos do NUVIG")
+
+            _ensure_output_dir()
+
             # Dicionário de telas
             self.screens = {
                 "home": HomeScreen(self),
@@ -119,6 +181,8 @@ class MainApp:
                 "cadastrar_extra": CadastrarExtraScreen(self),
                 "consultar_extras": ConsultarExtrasScreen(self),
                 "disponibilidade_ferias": DisponibilidadeFeriasScreen(self),
+                "cadastrar_ausencia": CadastrarAusenciasScreen(self),
+                "consultar_ausencias": ConsultarAusenciasScreen(self),
             }
 
             # Container para o conteúdo dinâmico
@@ -152,7 +216,7 @@ class MainApp:
 
             navbar = NavBar(
                 on_nav=navigate_to,
-                selected_nav="home"
+                selected_nav=None
             )
 
             # Layout principal

@@ -154,6 +154,100 @@ class DisponibilidadeFeriasScreen:
                 self.tabela_column.controls = [ft.Text(f"Erro ao atualizar tabela: {ex}", size=16, color=ft.Colors.RED)]
                 safe_update()
 
+        def gerar_relatorio(e=None):
+            try:
+                from reportlab.lib.pagesizes import A4
+                from reportlab.pdfgen import canvas
+                from reportlab.lib import colors
+                from reportlab.platypus import Table, TableStyle, Image, SimpleDocTemplate, Spacer
+                from reportlab.lib.units import cm
+                import os
+
+                escala_letra = dropdown_opcao.value
+                ano = int(dropdown_ano.value)
+
+                # Reaproveitar a construção das linhas atuais convertendo para uma lista simples
+                if not isinstance(self.tabela_column.controls, list) or not self.tabela_column.controls:
+                    print("[Relatorio] Sem dados para gerar o relatório.")
+                    return
+
+                # Extrair linhas da DataTable
+                data_rows = [["Mês/Ano", "Equipe", "Início", "Fim", "Quant. Dias"]]
+                if isinstance(self.tabela_column.controls[0], ft.DataTable):
+                    dt = self.tabela_column.controls[0]
+                    for r in dt.rows:
+                        valores = []
+                        for c in r.cells:
+                            # c.content é um ft.Text
+                            if hasattr(c.content, "value"):
+                                valores.append(str(c.content.value))
+                            else:
+                                valores.append("")
+                        data_rows.append(valores)
+                else:
+                    # Se não for DataTable, há mensagem de vazio
+                    print("[Relatorio] Tabela vazia ou em formato inesperado.")
+                    return
+
+                # Caminho do PDF (sempre em self.app.output_dir quando disponível)
+                base_dir = getattr(self.app, "output_dir", None)
+                if not base_dir or not os.path.isdir(base_dir):
+                    # fallback: diretório atual
+                    base_dir = os.getcwd()
+                pdf_filename = f"disponibilidade_ferias_{escala_letra}_{ano}.pdf"
+                pdf_path = os.path.join(base_dir, pdf_filename)
+                print(f"[Relatorio] Gerando PDF: {pdf_path}")
+
+                doc = SimpleDocTemplate(
+                    pdf_path,
+                    pagesize=A4,
+                    rightMargin=1.5*cm,
+                    leftMargin=1.5*cm,
+                    topMargin=1.5*cm,
+                    bottomMargin=1.5*cm,
+                )
+
+                elements = []
+
+                # Cabeçalho com logo
+                logo_path = os.path.abspath("assets/icons/logoNUVIG.png")
+                if os.path.exists(logo_path):
+                    img = Image(logo_path, width=4*cm, height=3*cm)
+                    img.hAlign = 'CENTER'
+                    elements.append(img)
+                else:
+                    print(f"[Relatorio] Logo não encontrada em {logo_path}")
+
+                elements.append(Spacer(1, 0.5*cm))
+
+                # Título
+                from reportlab.lib.styles import getSampleStyleSheet
+                from reportlab.platypus import Paragraph
+                styles = getSampleStyleSheet()
+                titulo = Paragraph(f"Disponibilidade de Férias — Equipe {escala_letra} — {ano}", styles['Title'])
+                elements.append(titulo)
+                elements.append(Spacer(1, 0.5*cm))
+
+                # Tabela
+                t = Table(data_rows, hAlign='CENTER')
+                t.setStyle(TableStyle([
+                    ('BACKGROUND', (0,0), (-1,0), colors.lightgrey),
+                    ('TEXTCOLOR', (0,0), (-1,0), colors.black),
+                    ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+                    ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+                    ('FONTSIZE', (0,0), (-1,0), 10),
+                    ('BOTTOMPADDING', (0,0), (-1,0), 8),
+                    ('GRID', (0,0), (-1,-1), 0.25, colors.grey),
+                ]))
+                elements.append(t)
+
+                doc.build(elements)
+                print(f"[Relatorio] PDF gerado com sucesso: {pdf_path}")
+            except Exception as ex:
+                import traceback
+                print("[Relatorio][EXCEPTION]", ex)
+                print(traceback.format_exc())
+
         # Título
         titulo = ft.Text(
             "Consulte a disponibilidade para férias",
@@ -172,6 +266,7 @@ class DisponibilidadeFeriasScreen:
             ],
             value=self.selected_opcao,
             width=120,
+            label="Equipe",
             on_change=atualizar_tabela
         )
         dropdown_ano = ft.Dropdown(
@@ -180,6 +275,7 @@ class DisponibilidadeFeriasScreen:
             ],
             value=self.selected_ano,
             width=120,
+            label="Ano",
             on_change=atualizar_tabela
         )
         row_dropdowns = ft.Row(
@@ -200,10 +296,11 @@ class DisponibilidadeFeriasScreen:
                 auto_scroll=False,
             ),
             width=600,
-            height=550,
+            height=450,
             border_radius=10,
             padding=20,
             alignment=ft.alignment.top_center,
+            #bgcolor=ft.Colors.ORANGE
         )
 
         # Column principal centralizada
@@ -212,9 +309,21 @@ class DisponibilidadeFeriasScreen:
                 titulo,
                 row_dropdowns,
                 tabela_container,
+                ft.Container(height=12),
+                ft.Row(
+                    controls=[
+                        ft.ElevatedButton(
+                            text="Gerar relatório",
+                            icon=ft.Icons.ASSESSMENT,
+                            on_click=gerar_relatorio
+                        )
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                ),
             ],
             alignment=ft.MainAxisAlignment.START,
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            spacing=10,
             expand=True,
         )
 

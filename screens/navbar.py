@@ -2,13 +2,14 @@ import flet as ft
 
 def NavBar(on_nav, selected_nav=None, on_cadastro_option=None):
     nav_items = [
+        ("Home", "home"),
         ("Calendário", "calendario"),
         ("Cadastro", "cadastro"),
         ("Extras", "extras"),
         ("Permutas", "permutas"),
         ("Compensações", "compensacoes"),
         ("Férias", "ferias"),
-        ("Ausencias", "ausencias"),
+        ("Ausências", "ausencias"),
         ]
     def handle_nav(e):
         if on_nav:
