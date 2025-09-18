@@ -3,10 +3,11 @@ from dataclasses import field
 import flet as ft
 from .base_screen import BaseScreen
 
-class BancoExtrasScreen(BaseScreen):
+
+class BancoDadosScreen(BaseScreen):
 	def __init__(self, app_instance):
 		super().__init__(app_instance)
-		self.current_nav = "banco_extras"
+		self.current_nav = "banco_dados"
 
 	def get_content(self) -> ft.Control:
 		# Dimensões padrão para os campos
@@ -15,7 +16,7 @@ class BancoExtrasScreen(BaseScreen):
 
 		header = ft.Container(
 			content=ft.Text(
-				"Banco de Extras",
+				"Banco de Dados",
 				size=28,
 				color=ft.Colors.BLACK,
 				weight=ft.FontWeight.BOLD,
@@ -33,7 +34,8 @@ class BancoExtrasScreen(BaseScreen):
 		row1 = ft.Row(
 			controls=[
 				ft.Container(
-					content=ft.Text(value='O que você deseja?', text_align=ft.TextAlign.CENTER, weight=ft.FontWeight.BOLD),
+					content=ft.Text(value='O que você deseja?', text_align=ft.TextAlign.CENTER,
+									weight=ft.FontWeight.BOLD),
 					width=field_width,
 					height=field_height,
 					alignment=ft.alignment.center
@@ -56,7 +58,8 @@ class BancoExtrasScreen(BaseScreen):
 		row2 = ft.Row(
 			controls=[
 				ft.Container(
-					content=ft.Text(value='Quantidade de horas:', text_align=ft.TextAlign.CENTER, weight=ft.FontWeight.BOLD),
+					content=ft.Text(value='Quantidade de horas:', text_align=ft.TextAlign.CENTER,
+									weight=ft.FontWeight.BOLD),
 					width=field_width,
 					height=field_height,
 					alignment=ft.alignment.center
@@ -114,9 +117,9 @@ class BancoExtrasScreen(BaseScreen):
 				color=ft.Colors.BLACK
 			),
 			width=field_width,
-			#height=field_height,
+			# height=field_height,
 			alignment=ft.alignment.center,
-			#bgcolor=ft.Colors.BLUE
+			# bgcolor=ft.Colors.BLUE
 		)
 
 		horas_disp_number = ft.Container(
@@ -128,9 +131,9 @@ class BancoExtrasScreen(BaseScreen):
 				color=ft.Colors.BLACK
 			),
 			width=field_width,
-			#height=field_height,
+			# height=field_height,
 			alignment=ft.alignment.center,
-			#bgcolor=ft.Colors.ORANGE
+			# bgcolor=ft.Colors.ORANGE
 		)
 
 		row5 = ft.Row(
@@ -139,13 +142,13 @@ class BancoExtrasScreen(BaseScreen):
 		)
 
 		from dialogalert import show_alert_dialog
-		
+
 		def buscar_horas_disponiveis():
 			"""Busca e soma as horas disponíveis para o intertício e tipo selecionados"""
 			try:
 				valor_interticio = textfield_interticio.value
 				tipo = dropdown_tipo.value
-				
+
 				if not valor_interticio or not tipo:
 					# Resetar valores se campos não estiverem preenchidos
 					horas_disp_text.content.value = "Horas disponíveis:"
@@ -154,11 +157,11 @@ class BancoExtrasScreen(BaseScreen):
 					if hasattr(self.app, 'page') and self.app.page:
 						self.app.page.update()
 					return
-				
+
 				# Buscar id do interticio
 				query_interticio = "SELECT id FROM interticios WHERE nome = ?"
 				result_interticio = self.app.db.execute_query(query_interticio, (valor_interticio,))
-				
+
 				if not result_interticio:
 					# Intertício não encontrado
 					horas_disp_text.content.value = f"Horas disponíveis para {valor_interticio}:"
@@ -167,27 +170,27 @@ class BancoExtrasScreen(BaseScreen):
 					if hasattr(self.app, 'page') and self.app.page:
 						self.app.page.update()
 					return
-				
+
 				interticio_id = result_interticio[0]["id"]
-				
+
 				# Buscar e somar horas
 				query_horas = "SELECT SUM(qty_horas) as total_horas FROM horasextras WHERE interticio_id = ? AND tipo = ?"
 				result_horas = self.app.db.execute_query(query_horas, (interticio_id, tipo))
-				
+
 				if result_horas and result_horas[0]["total_horas"] is not None:
 					total_horas = result_horas[0]["total_horas"]
 				else:
 					total_horas = 0
-				
+
 				# Atualizar textos
 				horas_disp_text.content.value = f"Horas disponíveis para {valor_interticio}:"
 				horas_disp_number.content.value = f"{total_horas} horas"
 				horas_disp_number.content.color = ft.Colors.BLACK if total_horas >= 0 else ft.Colors.RED
-				
+
 				# Atualizar a tela
 				if hasattr(self.app, 'page') and self.app.page:
 					self.app.page.update()
-					
+
 			except Exception as ex:
 				print(f"Erro ao buscar horas: {ex}")
 				horas_disp_text.content.value = "Erro ao buscar horas"
@@ -195,7 +198,7 @@ class BancoExtrasScreen(BaseScreen):
 				horas_disp_number.content.color = ft.Colors.RED
 				if hasattr(self.app, 'page') and self.app.page:
 					self.app.page.update()
-		
+
 		def mostrar_alerta(sucesso=True, mensagem=""):
 			if hasattr(self.app, 'page') and self.app.page:
 				show_alert_dialog(self.app.page, mensagem, sucesso)
@@ -264,16 +267,16 @@ class BancoExtrasScreen(BaseScreen):
 		return ft.Container(
 			content=ft.Column(
 				controls=[header,
-					  row1,
-					  row2,
-					  row3,
-					  row4,
-					  #row5,
-					  ft.Container(height=10),
-					  btn_row,
-					  ft.Container(height=10),
-					  horas_disp_text,
-					  horas_disp_number],
+						  row1,
+						  row2,
+						  row3,
+						  row4,
+						  # row5,
+						  ft.Container(height=10),
+						  btn_row,
+						  ft.Container(height=10),
+						  horas_disp_text,
+						  horas_disp_number],
 				horizontal_alignment=ft.CrossAxisAlignment.CENTER,
 				alignment=ft.MainAxisAlignment.START,
 				spacing=15

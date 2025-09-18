@@ -10,6 +10,7 @@ def NavBar(on_nav, selected_nav=None, on_cadastro_option=None):
         ("Compensações", "compensacoes"),
         ("Férias", "ferias"),
         ("Ausências", "ausencias"),
+        ("Banco de dados", "banco_dados"),
         ]
     def handle_nav(e):
         if on_nav:

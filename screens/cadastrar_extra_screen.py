@@ -389,17 +389,27 @@ class CadastrarExtraScreen(BaseScreen):
         # Botões
         btn_gravar = ft.ElevatedButton(
             text="Gravar",
-            style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8)),
+            width=150,
+            bgcolor=ft.Colors.WHITE,
+            style=ft.ButtonStyle(
+                color=ft.Colors.GREEN,
+                text_style=ft.TextStyle(size=12, weight=ft.FontWeight.BOLD),
+                shape=ft.RoundedRectangleBorder(radius=8),
+                side=ft.BorderSide(1, ft.Colors.GREEN)),
+            icon=ft.Icons.SAVE,
             on_click=gravar_extra,
-            bgcolor=ft.Colors.BLUE,
-            color=ft.Colors.WHITE
         )
         btn_limpar = ft.ElevatedButton(
             text="Limpar",
-            style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8)),
+            width=150,
+            bgcolor=ft.Colors.WHITE,
+            style=ft.ButtonStyle(
+                color=ft.Colors.RED,
+                text_style=ft.TextStyle(size=12, weight=ft.FontWeight.BOLD),
+                shape=ft.RoundedRectangleBorder(radius=8),
+                side=ft.BorderSide(1, ft.Colors.RED)),
+            icon=ft.Icons.DELETE,
             on_click=limpar_campos,
-            bgcolor=ft.Colors.GREY,
-            color=ft.Colors.WHITE
         )
 
         btn_row = ft.Row([

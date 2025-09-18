@@ -83,12 +83,24 @@ class CadastroPolicialScreen(BaseScreen):
 
         botoes = ft.Row(
             controls=[
-                ft.ElevatedButton(text="   Cadastrar   ",
+                ft.ElevatedButton(text="Cadastrar",
+                                  width=150,
+                                  bgcolor=ft.Colors.WHITE,
+                                  style=ft.ButtonStyle(
+                                      color=ft.Colors.GREEN,
+                                      text_style=ft.TextStyle(size=12, weight=ft.FontWeight.BOLD),
+                                      shape=ft.RoundedRectangleBorder(radius=8),
+                                      side=ft.BorderSide(1, ft.Colors.GREEN)),
                                   icon=ft.Icons.SAVE,
-                                  bgcolor=ft.Colors.GREEN,
-                                  color=ft.Colors.WHITE,
                                   on_click=self.on_salvar,),
-                ft.OutlinedButton(text="Cancelar",
+                ft.ElevatedButton(text="Cancelar",
+                                  width=150,
+                                  bgcolor=ft.Colors.WHITE,
+                                  style=ft.ButtonStyle(
+                                      color=ft.Colors.RED,
+                                      text_style=ft.TextStyle(size=12, weight=ft.FontWeight.BOLD),
+                                      shape=ft.RoundedRectangleBorder(radius=8),
+                                      side=ft.BorderSide(1, ft.Colors.RED)),
                                   icon=ft.Icons.CANCEL,
                                   on_click=lambda e: self.navigate_to("cadastro")
                                   )

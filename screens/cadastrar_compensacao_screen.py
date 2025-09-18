@@ -475,16 +475,28 @@ class CadastrarCompensacaoScreen(BaseScreen):
 		# Botões
 		btn_gravar = ft.ElevatedButton(
 			text="Gravar",
-			style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8)),
-			bgcolor=ft.Colors.BLUE,
-			color=ft.Colors.WHITE,
+			style=ft.ButtonStyle(
+				color=ft.Colors.BLACK,
+				text_style=ft.TextStyle(size=12, weight=ft.FontWeight.BOLD),
+				shape=ft.RoundedRectangleBorder(radius=8),
+				side=ft.BorderSide(1, ft.Colors.GREEN)),
+			icon=ft.Icons.SAVE,
+			color=ft.Colors.GREEN,
+			width=150,
+			bgcolor=ft.Colors.WHITE,
 			on_click=gravar_compensacao
 		)
 		btn_limpar = ft.ElevatedButton(
 			text="Limpar",
-			style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8)),
-			bgcolor=ft.Colors.GREY,
-			color=ft.Colors.WHITE,
+			width=btn_gravar.width,
+			style=ft.ButtonStyle(
+				color=ft.Colors.BLACK,
+				text_style=ft.TextStyle(size=12, weight=ft.FontWeight.BOLD),
+				shape=ft.RoundedRectangleBorder(radius=8),
+				side=ft.BorderSide(1, ft.Colors.RED)),
+			icon=ft.Icons.DELETE,
+			bgcolor=ft.Colors.WHITE,
+			color=ft.Colors.RED,
 			on_click=limpar_formulario
 		)
 		btn_row = ft.Row([

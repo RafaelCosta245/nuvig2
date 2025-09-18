@@ -49,13 +49,14 @@ class EdicaoRegistrosScreen:
         self.unidade_field = ft.Dropdown(label="Unidade", width=self.nome_field.width, options=unidades_opcoes)
         self.save_button = ft.ElevatedButton(
             text="Salvar Alterações",
-            icon=ft.Icons.SAVE,
-            bgcolor=ft.Colors.GREEN,
-            color=ft.Colors.WHITE,
+            width=150,
+            bgcolor=ft.Colors.WHITE,
             style=ft.ButtonStyle(
+                color=ft.Colors.GREEN,
+                text_style=ft.TextStyle(size=12, weight=ft.FontWeight.BOLD),
                 shape=ft.RoundedRectangleBorder(radius=8),
-                text_style=ft.TextStyle(weight=ft.FontWeight.BOLD)
-            ),
+                side=ft.BorderSide(1, ft.Colors.GREEN)),
+            icon=ft.Icons.SAVE,
             on_click=self.salvar_alteracoes,
             visible=True
         )

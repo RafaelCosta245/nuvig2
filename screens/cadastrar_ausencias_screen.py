@@ -6,7 +6,7 @@ import datetime
 class CadastrarAusenciasScreen(BaseScreen):
     def __init__(self, app_instance):
         super().__init__(app_instance)
-        self.current_nav = "cadastrar_ausencias"
+        self.current_nav = "cadastrar_ausencia"
 
     def get_content(self) -> ft.Control:
         # Buscar policial por matrícula (reutiliza a mesma lógica de férias)
@@ -182,10 +182,14 @@ class CadastrarAusenciasScreen(BaseScreen):
 
         # Botões principais (sem persistência por enquanto)
         def limpar(e):
-            matricula.value = policial.value = nome.value = equipe.value = ""
-            data_inicio1.value = data_fim1.value = ""
-            dias.value = ""
-            e.control.page.update()
+            if self.navigation_callback:
+                self.navigate_to(self.current_nav)  # Tenta recarregar a tela via navegação
+            # matricula.value = policial.value = nome.value = equipe.value = ""
+            # data_inicio1.value = data_fim1.value = ""
+            # dias.value = ""
+            # licenca.value = None
+            # licenca.update()
+            # e.control.page.update()
 
         def gravar(e):
             try:
@@ -242,10 +246,28 @@ class CadastrarAusenciasScreen(BaseScreen):
             except Exception as ex:
                 show_alert_dialog(e.control.page, f"Erro inesperado: {ex}", success=False)
 
-        btn_gravar = ft.ElevatedButton(text="Registrar", bgcolor=ft.Colors.GREEN, color=ft.Colors.WHITE,
-                                        style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8)), on_click=gravar)
-        btn_limpar = ft.ElevatedButton(text="Limpar", bgcolor=ft.Colors.GREY, color=ft.Colors.WHITE, width=btn_gravar.width,
-                                       style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8)), on_click=limpar)
+        btn_gravar = ft.ElevatedButton(text="Registrar",
+                                       bgcolor=ft.Colors.WHITE,
+                                       color=ft.Colors.GREEN,
+                                       width=120,
+                                       style=ft.ButtonStyle(
+                                           color=ft.Colors.BLACK,
+                                           text_style=ft.TextStyle(size=12, weight=ft.FontWeight.BOLD),
+                                           shape=ft.RoundedRectangleBorder(radius=8),
+                                           side=ft.BorderSide(1, ft.Colors.GREEN)),
+                                       icon=ft.Icons.SAVE,
+                                       on_click=gravar)
+        btn_limpar = ft.ElevatedButton(text="Limpar",
+                                       bgcolor=ft.Colors.WHITE,
+                                       color=ft.Colors.RED,
+                                       width=btn_gravar.width,
+                                       style=ft.ButtonStyle(
+                                           color=ft.Colors.BLACK,
+                                           text_style=ft.TextStyle(size=12, weight=ft.FontWeight.BOLD),
+                                           shape=ft.RoundedRectangleBorder(radius=8),
+                                           side=ft.BorderSide(1, ft.Colors.RED)),
+                                       icon=ft.Icons.DELETE,
+                                       on_click=limpar)
 
         form = ft.Column([
             ft.Text("Registro de Ausências", size=28, weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK, text_align=ft.TextAlign.CENTER),

@@ -43,6 +43,7 @@ class CadastrarFeriasScreen(BaseScreen):
             except:
                 return 0
 
+        total_dias = 0
         # Função para atualizar contador de dias
         def atualizar_contador():
             dias_periodo1 = calcular_dias(data_inicio1.value, data_fim1.value) if data_inicio1.value and data_fim1.value else 0
@@ -80,7 +81,7 @@ class CadastrarFeriasScreen(BaseScreen):
             elif total_dias > 30:
                 contador_total.color = ft.Colors.RED
             else:
-                contador_total.color = ft.Colors.ORANGE
+                contador_total.color = ft.Colors.BLACK
             
             # Atualizar a interface
             try:
@@ -380,95 +381,7 @@ class CadastrarFeriasScreen(BaseScreen):
         data_fim2 = ft.TextField(label="Data Fim", width=200, hint_text="dd/mm/aaaa")
         data_inicio3 = ft.TextField(label="Data Início", width=200, hint_text="dd/mm/aaaa")
         data_fim3 = ft.TextField(label="Data Fim", width=200, hint_text="dd/mm/aaaa")
-        
-        # Funções para aplicar máscara de data
-        def mascara_data_inicio1(e):
-            valor = ''.join([c for c in data_inicio1.value if c.isdigit()])
-            novo_valor = ''
-            if len(valor) > 0:
-                novo_valor += valor[:2]
-            if len(valor) > 2:
-                novo_valor += '/' + valor[2:4]
-            if len(valor) > 4:
-                novo_valor += '/' + valor[4:8]
-            data_inicio1.value = novo_valor
-            e.control.page.update()
-        
-        def mascara_data_fim1(e):
-            valor = ''.join([c for c in data_fim1.value if c.isdigit()])
-            novo_valor = ''
-            if len(valor) > 0:
-                novo_valor += valor[:2]
-            if len(valor) > 2:
-                novo_valor += '/' + valor[2:4]
-            if len(valor) > 4:
-                novo_valor += '/' + valor[4:8]
-            data_fim1.value = novo_valor
-            e.control.page.update()
-        
-        def mascara_data_inicio2(e):
-            valor = ''.join([c for c in data_inicio2.value if c.isdigit()])
-            novo_valor = ''
-            if len(valor) > 0:
-                novo_valor += valor[:2]
-            if len(valor) > 2:
-                novo_valor += '/' + valor[2:4]
-            if len(valor) > 4:
-                novo_valor += '/' + valor[4:8]
-            data_inicio2.value = novo_valor
-            e.control.page.update()
-        
-        def mascara_data_fim2(e):
-            valor = ''.join([c for c in data_fim2.value if c.isdigit()])
-            novo_valor = ''
-            if len(valor) > 0:
-                novo_valor += valor[:2]
-            if len(valor) > 2:
-                novo_valor += '/' + valor[2:4]
-            if len(valor) > 4:
-                novo_valor += '/' + valor[4:8]
-            data_fim2.value = novo_valor
-            e.control.page.update()
-        
-        def mascara_data_inicio3(e):
-            valor = ''.join([c for c in data_inicio3.value if c.isdigit()])
-            novo_valor = ''
-            if len(valor) > 0:
-                novo_valor += valor[:2]
-            if len(valor) > 2:
-                novo_valor += '/' + valor[2:4]
-            if len(valor) > 4:
-                novo_valor += '/' + valor[4:8]
-            data_inicio3.value = novo_valor
-            e.control.page.update()
-        
-        def mascara_data_fim3(e):
-            valor = ''.join([c for c in data_fim3.value if c.isdigit()])
-            novo_valor = ''
-            if len(valor) > 0:
-                novo_valor += valor[:2]
-            if len(valor) > 2:
-                novo_valor += '/' + valor[2:4]
-            if len(valor) > 4:
-                novo_valor += '/' + valor[4:8]
-            data_fim3.value = novo_valor
-            e.control.page.update()
-        
-        # Conectar as máscaras aos campos
-        data_inicio1.on_change = mascara_data_inicio1
-        data_fim1.on_change = mascara_data_fim1
-        data_inicio2.on_change = mascara_data_inicio2
-        data_fim2.on_change = mascara_data_fim2
-        data_inicio3.on_change = mascara_data_inicio3
-        data_fim3.on_change = mascara_data_fim3
 
-        # Labels dos períodos e contador
-        periodo1_label = ft.Text("Período 1", size=16, weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK)
-        periodo2_label = ft.Text("Período 2 (Opcional)", size=16, weight=ft.FontWeight.BOLD, color=ft.Colors.GREY)
-        periodo3_label = ft.Text("Período 3 (Opcional)", size=16, weight=ft.FontWeight.BOLD, color=ft.Colors.GREY)
-        contador_total = ft.Text("Total: 0 de 30 dias", size=16, weight=ft.FontWeight.BOLD, color=ft.Colors.ORANGE,width=matricula.width)
-
-        
         # Configuração de localização para português do Brasil
         def configure_locale(page):
             if hasattr(page, 'locale_configuration') and page.locale_configuration is None:
@@ -485,26 +398,32 @@ class CadastrarFeriasScreen(BaseScreen):
             first_date=datetime.datetime(2020, 1, 1),
             last_date=datetime.datetime(2030, 12, 31),
         )
+
         def on_inicio1_change(e):
             if datepicker_inicio1.value:
                 data_inicio1.value = datepicker_inicio1.value.strftime("%d/%m/%Y")
                 if not validar_periodo(1, data_inicio1.value, data_fim1.value, e.control.page):
                     data_inicio1.value = ""
+                on_change_inicio1(e)
                 atualizar_contador()
                 e.control.page.update()
+
         datepicker_inicio1.on_change = on_inicio1_change
-        
+
         datepicker_fim1 = ft.DatePicker(
             first_date=datetime.datetime(2020, 1, 1),
             last_date=datetime.datetime(2030, 12, 31),
         )
+
         def on_fim1_change(e):
             if datepicker_fim1.value:
                 data_fim1.value = datepicker_fim1.value.strftime("%d/%m/%Y")
                 if not validar_periodo(1, data_inicio1.value, data_fim1.value, e.control.page):
                     data_fim1.value = ""
+                on_change_fim1(e)
                 atualizar_contador()
                 e.control.page.update()
+
         datepicker_fim1.on_change = on_fim1_change
 
         # DatePickers para Período 2
@@ -512,26 +431,32 @@ class CadastrarFeriasScreen(BaseScreen):
             first_date=datetime.datetime(2020, 1, 1),
             last_date=datetime.datetime(2030, 12, 31),
         )
+
         def on_inicio2_change(e):
             if datepicker_inicio2.value:
                 data_inicio2.value = datepicker_inicio2.value.strftime("%d/%m/%Y")
                 if not validar_periodo(2, data_inicio2.value, data_fim2.value, e.control.page):
                     data_inicio2.value = ""
+                on_change_inicio2(e)
                 atualizar_contador()
                 e.control.page.update()
+
         datepicker_inicio2.on_change = on_inicio2_change
-        
+
         datepicker_fim2 = ft.DatePicker(
             first_date=datetime.datetime(2020, 1, 1),
             last_date=datetime.datetime(2030, 12, 31),
         )
+
         def on_fim2_change(e):
             if datepicker_fim2.value:
                 data_fim2.value = datepicker_fim2.value.strftime("%d/%m/%Y")
                 if not validar_periodo(2, data_inicio2.value, data_fim2.value, e.control.page):
                     data_fim2.value = ""
+                on_change_fim2(e)
                 atualizar_contador()
                 e.control.page.update()
+
         datepicker_fim2.on_change = on_fim2_change
 
         # DatePickers para Período 3
@@ -539,26 +464,32 @@ class CadastrarFeriasScreen(BaseScreen):
             first_date=datetime.datetime(2020, 1, 1),
             last_date=datetime.datetime(2030, 12, 31),
         )
+
         def on_inicio3_change(e):
             if datepicker_inicio3.value:
                 data_inicio3.value = datepicker_inicio3.value.strftime("%d/%m/%Y")
                 if not validar_periodo(3, data_inicio3.value, data_fim3.value, e.control.page):
                     data_inicio3.value = ""
+                on_change_inicio3(e)
                 atualizar_contador()
                 e.control.page.update()
+
         datepicker_inicio3.on_change = on_inicio3_change
-        
+
         datepicker_fim3 = ft.DatePicker(
             first_date=datetime.datetime(2020, 1, 1),
             last_date=datetime.datetime(2030, 12, 31),
         )
+
         def on_fim3_change(e):
             if datepicker_fim3.value:
                 data_fim3.value = datepicker_fim3.value.strftime("%d/%m/%Y")
                 if not validar_periodo(3, data_inicio3.value, data_fim3.value, e.control.page):
                     data_fim3.value = ""
+                on_change_fim3(e)
                 atualizar_contador()
                 e.control.page.update()
+
         datepicker_fim3.on_change = on_fim3_change
 
         # Função para abrir DatePicker
@@ -581,7 +512,7 @@ class CadastrarFeriasScreen(BaseScreen):
             width=100,
             on_click=lambda e: open_date_picker(datepicker_inicio1, e.control.page)
         )
-        
+
         btn_fim1 = ft.ElevatedButton(
             text="Fim P1",
             icon=ft.Icons.CALENDAR_MONTH,
@@ -605,7 +536,7 @@ class CadastrarFeriasScreen(BaseScreen):
             width=100,
             on_click=lambda e: open_date_picker(datepicker_inicio2, e.control.page)
         )
-        
+
         btn_fim2 = ft.ElevatedButton(
             text="Fim P2",
             icon=ft.Icons.CALENDAR_MONTH,
@@ -629,7 +560,7 @@ class CadastrarFeriasScreen(BaseScreen):
             width=100,
             on_click=lambda e: open_date_picker(datepicker_inicio3, e.control.page)
         )
-        
+
         btn_fim3 = ft.ElevatedButton(
             text="Fim P3",
             icon=ft.Icons.CALENDAR_MONTH,
@@ -641,6 +572,159 @@ class CadastrarFeriasScreen(BaseScreen):
             width=100,
             on_click=lambda e: open_date_picker(datepicker_fim3, e.control.page)
         )
+
+
+        def mask_date(field):
+            valor = ''.join(c for c in field.value if c.isdigit())
+            novo = ''
+            if len(valor) > 0:
+                novo += valor[:2]
+            if len(valor) > 2:
+                novo += '/' + valor[2:4]
+            if len(valor) > 4:
+                novo += '/' + valor[4:8]
+            field.value = novo
+
+        def on_change_inicio1(e):
+            mask_date(data_inicio1)
+            atualizar_contador()
+            dias_periodo1 = calcular_dias(data_inicio1.value, data_fim1.value)
+            if len(str(data_inicio1.value)) == 10 and len(str(data_fim1.value)) == 10 and dias_periodo1 < 30:
+                data_inicio2.disabled = False
+                data_fim2.disabled = False
+                btn_inicio2.disabled = False
+                btn_fim2.disabled = False
+            else:
+                data_inicio2.value = ""
+                data_fim2.value = ""
+                data_inicio3.value = ""
+                data_fim3.value = ""
+                data_inicio2.disabled = True
+                data_fim2.disabled = True
+                btn_inicio2.disabled = True
+                btn_fim2.disabled = True
+                data_inicio3.disabled = True
+                data_fim3.disabled = True
+                btn_inicio3.disabled = True
+                btn_fim3.disabled = True
+
+            contador_total.update()
+            e.control.page.update()
+
+        def on_change_inicio2(e):
+            mask_date(data_inicio2)
+            atualizar_contador()
+            dias_periodo1 = calcular_dias(data_inicio1.value, data_fim1.value)
+            dias_periodo2 = calcular_dias(data_inicio2.value, data_fim2.value)
+            dias_periodo12 = dias_periodo1 + dias_periodo2
+            if (len(str(data_inicio1.value)) == 10 and len(str(data_fim1.value)) == 10 and dias_periodo12 < 30 and
+                    len(str(data_inicio2.value)) == 10 and len(str(data_fim2.value)) == 10):
+                data_inicio3.disabled = False
+                data_fim3.disabled = False
+                btn_inicio3.disabled = False
+                btn_fim3.disabled = False
+            else:
+                data_inicio3.value = ""
+                data_fim3.value = ""
+                data_inicio3.disabled = True
+                data_fim3.disabled = True
+                btn_inicio3.disabled = True
+                btn_fim3.disabled = True
+            contador_total.update()
+            e.control.page.update()
+
+        def on_change_inicio3(e):
+            mask_date(data_inicio3)
+            atualizar_contador()
+            contador_total.update()
+            e.control.page.update()
+
+
+        def on_change_fim1(e):
+            mask_date(data_fim1)
+            atualizar_contador()
+            dias_periodo1 = calcular_dias(data_inicio1.value, data_fim1.value)
+            if len(str(data_inicio1.value)) == 10 and len(str(data_fim1.value)) == 10 and dias_periodo1 < 30:
+                data_inicio2.disabled = False
+                data_fim2.disabled = False
+                btn_inicio2.disabled = False
+                btn_fim2.disabled = False
+
+            else:
+                data_inicio2.value = ""
+                data_fim2.value = ""
+                data_inicio3.value = ""
+                data_fim3.value = ""
+                data_inicio2.disabled = True
+                data_fim2.disabled = True
+                btn_inicio2.disabled = True
+                btn_fim2.disabled = True
+                data_inicio3.disabled = True
+                data_fim3.disabled = True
+                btn_inicio3.disabled = True
+                btn_fim3.disabled = True
+
+            contador_total.update()
+            e.control.page.update()
+
+        def on_change_fim2(e):
+            mask_date(data_fim2)
+            atualizar_contador()
+            dias_periodo1 = calcular_dias(data_inicio1.value, data_fim1.value)
+            dias_periodo2 = calcular_dias(data_inicio2.value, data_fim2.value)
+            dias_periodo12 = dias_periodo1 + dias_periodo2
+            if (len(str(data_inicio1.value)) == 10 and len(str(data_fim1.value)) == 10 and dias_periodo12 < 30 and
+                    len(str(data_inicio2.value)) == 10 and len(str(data_fim2.value)) == 10):
+                data_inicio3.disabled = False
+                data_fim3.disabled = False
+                btn_inicio3.disabled = False
+                btn_fim3.disabled = False
+            else:
+                data_inicio3.value = ""
+                data_fim3.value = ""
+                data_inicio3.disabled = True
+                data_fim3.disabled = True
+                btn_inicio3.disabled = True
+                btn_fim3.disabled = True
+            contador_total.update()
+            e.control.page.update()
+
+        def on_change_fim3(e):
+            mask_date(data_fim3)
+            atualizar_contador()
+            contador_total.update()
+            e.control.page.update()
+
+        # Conectar as máscaras aos campos
+        data_inicio1.on_change = on_change_inicio1
+        data_fim1.on_change = on_change_fim1
+        data_inicio2.on_change = on_change_inicio2
+        data_fim2.on_change = on_change_fim2
+        data_inicio3.on_change = on_change_inicio3
+        data_fim3.on_change = on_change_fim3
+
+
+        data_inicio2.disabled = True
+        data_fim2.disabled = True
+        data_inicio3.disabled = True
+        data_fim3.disabled = True
+        btn_inicio2.disabled = True
+        btn_inicio3.disabled = True
+        btn_fim2.disabled = True
+        btn_fim3.disabled = True
+
+
+
+
+
+        # Labels dos períodos e contador
+        periodo1_label = ft.Text("Período 1", size=16, weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK)
+        periodo2_label = ft.Text("Período 2 (Opcional)", size=16, weight=ft.FontWeight.BOLD, color=ft.Colors.GREY,)
+        periodo3_label = ft.Text("Período 3 (Opcional)", size=16, weight=ft.FontWeight.BOLD, color=ft.Colors.GREY,)
+        contador_total = ft.Text("Total: 0 de 30 dias", size=16, weight=ft.FontWeight.BOLD, color=ft.Colors.ORANGE,width=matricula.width)
+
+        
+
 
         form_grid = ft.Column([
             ft.Text("Dados do Policial", size=16, weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK),
@@ -717,7 +801,7 @@ class CadastrarFeriasScreen(BaseScreen):
             dias_periodo2 = calcular_dias(data_inicio2.value, data_fim2.value) if data_inicio2.value and data_fim2.value else 0
             dias_periodo3 = calcular_dias(data_inicio3.value, data_fim3.value) if data_inicio3.value and data_fim3.value else 0
             total_dias = dias_periodo1 + dias_periodo2 + dias_periodo3
-            
+
             if total_dias != 30:
                 mostrar_erro_periodo(e.control.page)
                 return
@@ -875,16 +959,28 @@ class CadastrarFeriasScreen(BaseScreen):
         # Botões
         btn_gravar = ft.ElevatedButton(
             text="Gravar",
-            style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8)),
-            bgcolor=ft.Colors.BLUE,
-            color=ft.Colors.WHITE,
+            style=ft.ButtonStyle(
+                color=ft.Colors.BLACK,
+                text_style=ft.TextStyle(size=12, weight=ft.FontWeight.BOLD),
+                shape=ft.RoundedRectangleBorder(radius=8),
+                side=ft.BorderSide(1, ft.Colors.GREEN)),
+            icon=ft.Icons.SAVE,
+            width=150,
+            bgcolor=ft.Colors.WHITE,
+            color=ft.Colors.GREEN,
             on_click=gravar_ferias
         )
         btn_limpar = ft.ElevatedButton(
             text="Limpar",
-            style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8)),
-            bgcolor=ft.Colors.GREY,
-            color=ft.Colors.WHITE,
+            style=ft.ButtonStyle(
+                color=ft.Colors.BLACK,
+                text_style=ft.TextStyle(size=12, weight=ft.FontWeight.BOLD),
+                shape=ft.RoundedRectangleBorder(radius=8),
+                side=ft.BorderSide(1, ft.Colors.RED)),
+            icon=ft.Icons.DELETE,
+            width=btn_gravar.width,
+            bgcolor=ft.Colors.WHITE,
+            color=ft.Colors.RED,
             on_click=limpar_formulario
         )
         btn_row = ft.Row([

@@ -520,12 +520,17 @@ class ConsultarFeriasScreen(BaseScreen):
             
             e.control.page.open(dlg_confirmacao)
 
-        btn_apagar = ft.TextButton(
-            "Apagar",
+        btn_apagar = ft.ElevatedButton(
+            text="Apagar",
+            width=150,
+            color=ft.Colors.RED,
+            bgcolor=ft.Colors.WHITE,
             style=ft.ButtonStyle(
                 color=ft.Colors.BLACK,
-                text_style=ft.TextStyle(size=12)
-            ),
+                text_style=ft.TextStyle(size=12, weight=ft.FontWeight.BOLD),
+                shape=ft.RoundedRectangleBorder(radius=8),
+                side=ft.BorderSide(1, ft.Colors.RED)),
+            icon=ft.Icons.DELETE,
             on_click=apagar_ferias
         )
         # Função para editar as férias selecionadas
@@ -768,12 +773,17 @@ class ConsultarFeriasScreen(BaseScreen):
             
             e.control.page.open(dlg_edicao)
 
-        btn_editar = ft.TextButton(
-            "Editar",
+        btn_editar = ft.ElevatedButton(
+            text="Editar",
+            width=btn_apagar.width,
+            color=ft.Colors.BLACK,
+            bgcolor=ft.Colors.WHITE,
             style=ft.ButtonStyle(
                 color=ft.Colors.BLACK,
-                text_style=ft.TextStyle(size=12)
-            ),
+                text_style=ft.TextStyle(size=12, weight=ft.FontWeight.BOLD),
+                shape=ft.RoundedRectangleBorder(radius=8),
+                side=ft.BorderSide(1, ft.Colors.BLACK)),
+            icon=ft.Icons.EDIT,
             on_click=editar_ferias
         )
         btn_gravar = ft.TextButton(
@@ -787,7 +797,7 @@ class ConsultarFeriasScreen(BaseScreen):
         row_botoes = ft.Row([
             btn_apagar,
             btn_editar,
-            btn_gravar
+            #btn_gravar
         ], alignment=ft.MainAxisAlignment.CENTER, spacing=20)
 
         return ft.Column([

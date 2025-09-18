@@ -1,4 +1,16 @@
 import flet as ft
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+from reportlab.lib import colors
+from reportlab.platypus import Table, TableStyle, Image, SimpleDocTemplate, Spacer
+from reportlab.lib.units import cm
+from reportlab.lib.units import inch
+import os
+from database.database_manager import DatabaseManager
+import datetime
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import Paragraph
+import traceback
 
 class DisponibilidadeFeriasScreen:
     def __init__(self, app):
@@ -8,8 +20,7 @@ class DisponibilidadeFeriasScreen:
         self.tabela_column = None
 
     def get_content(self):
-        from database.database_manager import DatabaseManager
-        import datetime
+
 
         db = self.app.db if hasattr(self.app, "db") else DatabaseManager()
 
@@ -148,7 +159,6 @@ class DisponibilidadeFeriasScreen:
                     ]
                 safe_update()
             except Exception as ex:
-                import traceback
                 print("[Disponibilidade][EXCEPTION]", ex)
                 print(traceback.format_exc())
                 self.tabela_column.controls = [ft.Text(f"Erro ao atualizar tabela: {ex}", size=16, color=ft.Colors.RED)]
@@ -156,12 +166,6 @@ class DisponibilidadeFeriasScreen:
 
         def gerar_relatorio(e=None):
             try:
-                from reportlab.lib.pagesizes import A4
-                from reportlab.pdfgen import canvas
-                from reportlab.lib import colors
-                from reportlab.platypus import Table, TableStyle, Image, SimpleDocTemplate, Spacer
-                from reportlab.lib.units import cm
-                import os
 
                 escala_letra = dropdown_opcao.value
                 ano = int(dropdown_ano.value)
@@ -221,8 +225,6 @@ class DisponibilidadeFeriasScreen:
                 elements.append(Spacer(1, 0.5*cm))
 
                 # Título
-                from reportlab.lib.styles import getSampleStyleSheet
-                from reportlab.platypus import Paragraph
                 styles = getSampleStyleSheet()
                 titulo = Paragraph(f"Disponibilidade de Férias — Equipe {escala_letra} — {ano}", styles['Title'])
                 elements.append(titulo)
@@ -244,7 +246,7 @@ class DisponibilidadeFeriasScreen:
                 doc.build(elements)
                 print(f"[Relatorio] PDF gerado com sucesso: {pdf_path}")
             except Exception as ex:
-                import traceback
+
                 print("[Relatorio][EXCEPTION]", ex)
                 print(traceback.format_exc())
 
@@ -314,7 +316,15 @@ class DisponibilidadeFeriasScreen:
                     controls=[
                         ft.ElevatedButton(
                             text="Gerar relatório",
-                            icon=ft.Icons.ASSESSMENT,
+                            icon=ft.Icons.PICTURE_AS_PDF,
+                            color=ft.Colors.BLACK,
+                            bgcolor=ft.Colors.WHITE,
+                            width=150,
+                            style=ft.ButtonStyle(
+                                color=ft.Colors.BLACK,
+                                text_style=ft.TextStyle(size=12, weight=ft.FontWeight.BOLD),
+                                shape=ft.RoundedRectangleBorder(radius=8),
+                                side=ft.BorderSide(1, ft.Colors.BLACK)),
                             on_click=gerar_relatorio
                         )
                     ],
