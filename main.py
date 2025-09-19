@@ -85,8 +85,8 @@ class MainApp:
             self.page = page
             page.title = "NUVIG - Gestão"
             page.window.icon = os.path.abspath("assets/icons/nuvig.ico")
-            page.window_width = 1400
-            page.window_height = 900
+            page.window_width = 1792
+            page.window_height = 1008
             page.window_resizable = True
             page.theme_mode = ft.ThemeMode.LIGHT
             page.padding = 0
