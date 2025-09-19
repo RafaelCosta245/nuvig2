@@ -1,7 +1,121 @@
-from dataclasses import field
-
 import flet as ft
+import os
+import datetime
+from pydrive2.auth import GoogleAuth
+from pydrive2.drive import GoogleDrive
 from .base_screen import BaseScreen
+
+
+# ---- Função de alerta ----
+def show_alert_dialog(page, mensagem, success=True):
+	dlg = ft.AlertDialog(
+		modal=True,
+		title=ft.Text("Sucesso" if success else "Erro", color=ft.Colors.GREEN if success else ft.Colors.RED),
+		content=ft.Text(mensagem),
+		actions=[
+			ft.TextButton("OK", on_click=lambda e: page.close(dlg)),
+		],
+		actions_alignment=ft.MainAxisAlignment.END,
+	)
+	page.open(dlg)
+
+
+# ---- Autenticação com reutilização de credenciais ----
+def autenticar_drive():
+	gauth = GoogleAuth()
+
+	# Caminho para o arquivo client_secrets.json
+	caminho_client = os.path.join("assets", "json", "client_secrets.json")
+
+	# Caminho para salvar/reutilizar credenciais
+	caminho_credentials = os.path.join("assets", "json", "credentials.json")
+
+	# Verifica se o arquivo client_secrets.json existe
+	if not os.path.exists(caminho_client):
+		raise FileNotFoundError(
+			f"Arquivo client_secrets.json não encontrado em: {caminho_client}. "
+			"Certifique-se de que o arquivo está no diretório 'assets/json/'."
+		)
+
+	# Configura o caminho do client_secrets.json
+	gauth.LoadClientConfigFile(caminho_client)
+
+	# Tenta carregar credenciais salvas
+	if os.path.exists(caminho_credentials):
+		try:
+			gauth.LoadCredentialsFile(caminho_credentials)
+			if gauth.credentials is None or gauth.credentials.invalid:
+				print("Credenciais salvas inválidas, iniciando nova autenticação...")
+				gauth.LocalWebserverAuth()
+				gauth.SaveCredentialsFile(caminho_credentials)
+			else:
+				print("Usando credenciais salvas.")
+		except Exception as e:
+			print(f"Erro ao carregar credenciais salvas: {str(e)}. Iniciando nova autenticação...")
+			gauth.LocalWebserverAuth()
+			gauth.SaveCredentialsFile(caminho_credentials)
+	else:
+		# Primeira autenticação: abre o navegador
+		print("Nenhuma credencial salva encontrada. Autenticando via navegador...")
+		gauth.LocalWebserverAuth()
+		gauth.SaveCredentialsFile(caminho_credentials)
+
+	return GoogleDrive(gauth)
+
+
+# ---- Buscar ou criar pasta no Google Drive ----
+def get_or_create_folder(drive, nome_pasta, parent_id=None):
+	# Buscar pasta existente pelo nome
+	query = f"title='{nome_pasta}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
+	if parent_id:
+		query += f" and '{parent_id}' in parents"
+
+	try:
+		folder_list = drive.ListFile({'q': query}).GetList()
+	except Exception as e:
+		raise Exception(f"Erro ao buscar pasta '{nome_pasta}': {str(e)}")
+
+	# Se a pasta já existe, retorna seu ID
+	if folder_list:
+		return folder_list[0]['id']
+
+	# Se não existe, cria a pasta
+	pasta = drive.CreateFile({
+		"title": nome_pasta,
+		"mimeType": "application/vnd.google-apps.folder",
+		"parents": [{"id": parent_id}] if parent_id else []
+	})
+	pasta.Upload()
+	return pasta["id"]
+
+
+# ---- Fazer upload do arquivo para a pasta ----
+def upload_arquivo(drive, file_path, folder_id):
+	if not os.path.exists(file_path):
+		raise FileNotFoundError(f"Arquivo não encontrado: {file_path}")
+
+	arquivo = drive.CreateFile({
+		"title": os.path.basename(file_path),
+		"parents": [{"id": folder_id}]
+	})
+	arquivo.SetContentFile(file_path)
+	arquivo.Upload()
+	print(f"✔ Arquivo {file_path} enviado para a pasta ID={folder_id}")
+
+
+# ---- Função principal de backup ----
+def backup_sqlite_para_drive(db_path, parent_folder_id=None):
+	drive = autenticar_drive()
+
+	# Buscar ou criar a pasta "NUVIG Backup"
+	nuvig_backup_id = get_or_create_folder(drive, "NUVIG Backup", parent_folder_id)
+
+	# Nome da subpasta com data e hora
+	pasta_nome = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+	pasta_id = get_or_create_folder(drive, pasta_nome, nuvig_backup_id)
+
+	# Envia o arquivo .db
+	upload_arquivo(drive, db_path, pasta_id)
 
 
 class BancoDadosScreen(BaseScreen):
@@ -10,13 +124,9 @@ class BancoDadosScreen(BaseScreen):
 		self.current_nav = "banco_dados"
 
 	def get_content(self) -> ft.Control:
-		# Dimensões padrão para os campos
-		field_width = 250
-		field_height = 50
-
 		header = ft.Container(
 			content=ft.Text(
-				"Banco de Dados",
+				"Banco de dados",
 				size=28,
 				color=ft.Colors.BLACK,
 				weight=ft.FontWeight.BOLD,
@@ -26,261 +136,97 @@ class BancoDadosScreen(BaseScreen):
 			alignment=ft.alignment.center
 		)
 
-		dropdown_operacao = ft.Dropdown(
-			label="Add/Remover",
-			width=field_width,
-			options=[ft.dropdown.Option("Adicionar Horas"), ft.dropdown.Option("Remover Horas")]
-		)
-		row1 = ft.Row(
-			controls=[
-				ft.Container(
-					content=ft.Text(value='O que você deseja?', text_align=ft.TextAlign.CENTER,
-									weight=ft.FontWeight.BOLD),
-					width=field_width,
-					height=field_height,
-					alignment=ft.alignment.center
-				),
-				dropdown_operacao
-			],
-			alignment=ft.MainAxisAlignment.CENTER
-		)
+		def salvar_db(e):
+			try:
+				# Determina a página ativa a partir do evento; se não houver, tenta usar self.page
+				# Tenta obter a página do evento, do controle, ou da instância
+				page = getattr(e, "page", None)
+				if page is None and hasattr(e, "control") and hasattr(e.control, "page"):
+					page = e.control.page
+				if page is None:
+					page = self.page
+				else:
+					# Persiste a referência da página para usos futuros
+					self.page = page
+				# Caminho do arquivo de banco de dados
+				db_path = os.path.join("assets", "db", "nuvig.db")
+				
+				# Verificar se o arquivo existe
+				if not os.path.exists(db_path):
+					if page:
+						show_alert_dialog(page, "Arquivo nuvig.db não encontrado na pasta assets/db/", success=False)
+					return
+				
+				# Fazer backup para o Google Drive
+				backup_sqlite_para_drive(db_path)
+				
+				# Mostrar alerta de sucesso
+				if page:
+					show_alert_dialog(page, "Banco de dados salvo com sucesso no Google Drive!", success=True)
+				
+			except Exception as error:
+				# Mostrar alerta de erro
+				page = getattr(e, "page", None) or self.page
+				if page:
+					show_alert_dialog(page, f"Erro ao salvar banco de dados: {str(error)}", success=False)
 
-		textfield_horas = ft.TextField(
-			label="Quant. horas",
-			width=field_width,
-			height=field_height,
-			input_filter=ft.InputFilter(
-				allow=True,
-				regex_string=r"^[0-9]*$",
-				replacement_string=""
+
+		def card_backup_db() -> ft.Control:
+			return ft.Container(
+				content=ft.Column(
+					controls=[
+						ft.Text("☁️ Backup do Banco de dados", size=18, weight=ft.FontWeight.BOLD,
+								text_align=ft.TextAlign.CENTER),
+						ft.Text("Salvar BD na nuvem", size=12, color=ft.Colors.GREY,
+								text_align=ft.TextAlign.CENTER),
+						ft.Container(height=15),
+						ft.TextButton(
+							text="Salvar",
+							icon=ft.Icons.SAVE,
+							on_click=lambda e: salvar_db(e),
+						),
+					],
+					horizontal_alignment=ft.CrossAxisAlignment.START,
+					spacing=5,
+				),
+				padding=ft.padding.all(8),
+				border=ft.border.all(1, ft.Colors.GREY),
+				border_radius=12,
+				bgcolor=ft.Colors.WHITE,
+				width=310,
+				height=140
 			)
-		)
-		row2 = ft.Row(
-			controls=[
-				ft.Container(
-					content=ft.Text(value='Quantidade de horas:', text_align=ft.TextAlign.CENTER,
-									weight=ft.FontWeight.BOLD),
-					width=field_width,
-					height=field_height,
-					alignment=ft.alignment.center
+
+		def card_import_db() -> ft.Control:
+			return ft.Container(
+				content=ft.Column(
+					controls=[
+						ft.Text("📥 Importar Banco de Dados", size=18, weight=ft.FontWeight.BOLD,
+								text_align=ft.TextAlign.CENTER),
+						ft.Text("Importar arquivo da Nuvem", size=12, color=ft.Colors.GREY,
+								text_align=ft.TextAlign.CENTER),
+						ft.Container(height=15),
+						ft.TextButton(
+							text="Abrir",
+							icon=ft.Icons.ARROW_FORWARD,
+							on_click=lambda e: self.navigate_to("import_db"),
+						),
+					],
+					horizontal_alignment=ft.CrossAxisAlignment.START,
+					spacing=5,
 				),
-				textfield_horas
-			],
-			alignment=ft.MainAxisAlignment.CENTER
-		)
+				padding=ft.padding.all(8),
+				border=ft.border.all(1, ft.Colors.GREY),
+				border_radius=12,
+				bgcolor=ft.Colors.WHITE,
+				width=300,
+				height=140
+			)
 
-		textfield_interticio = ft.TextField(
-			label="Ex.: ago/set-25",
-			width=field_width,
-			height=field_height,
-			on_change=lambda e: buscar_horas_disponiveis()
-		)
-		row3 = ft.Row(
-			controls=[
-				ft.Container(
-					content=ft.Text(value='Intertício:', text_align=ft.TextAlign.CENTER, weight=ft.FontWeight.BOLD),
-					width=field_width,
-					height=field_height,
-					alignment=ft.alignment.center
-				),
-				textfield_interticio
-			],
-			alignment=ft.MainAxisAlignment.CENTER
-		)
-
-		dropdown_tipo = ft.Dropdown(
-			label="Operação",
-			width=field_width,
-			options=[ft.dropdown.Option("Rotina"), ft.dropdown.Option("OBLL"), ft.dropdown.Option("Outro")],
-			on_change=lambda e: buscar_horas_disponiveis()
-		)
-		row4 = ft.Row(
-			controls=[
-				ft.Container(
-					content=ft.Text(value='Operação:', text_align=ft.TextAlign.CENTER, weight=ft.FontWeight.BOLD),
-					width=field_width,
-					height=field_height,
-					alignment=ft.alignment.center
-				),
-				dropdown_tipo
-			],
-			alignment=ft.MainAxisAlignment.CENTER
-		)
-
-		# Containers para mostrar horas disponíveis
-		horas_disp_text = ft.Container(
-			content=ft.Text(
-				value="Horas disponíveis:",
-				text_align=ft.TextAlign.CENTER,
-				weight=ft.FontWeight.BOLD,
-				size=14,
-				color=ft.Colors.BLACK
-			),
-			width=field_width,
-			# height=field_height,
-			alignment=ft.alignment.center,
-			# bgcolor=ft.Colors.BLUE
-		)
-
-		horas_disp_number = ft.Container(
-			content=ft.Text(
-				value="0 horas",
-				text_align=ft.TextAlign.CENTER,
-				weight=ft.FontWeight.BOLD,
-				size=14,
-				color=ft.Colors.BLACK
-			),
-			width=field_width,
-			# height=field_height,
-			alignment=ft.alignment.center,
-			# bgcolor=ft.Colors.ORANGE
-		)
-
-		row5 = ft.Row(
-			controls=[horas_disp_text, horas_disp_number],
-			alignment=ft.MainAxisAlignment.CENTER
-		)
-
-		from dialogalert import show_alert_dialog
-
-		def buscar_horas_disponiveis():
-			"""Busca e soma as horas disponíveis para o intertício e tipo selecionados"""
-			try:
-				valor_interticio = textfield_interticio.value
-				tipo = dropdown_tipo.value
-
-				if not valor_interticio or not tipo:
-					# Resetar valores se campos não estiverem preenchidos
-					horas_disp_text.content.value = "Horas disponíveis:"
-					horas_disp_number.content.value = "0 horas"
-					horas_disp_number.content.color = ft.Colors.BLACK
-					if hasattr(self.app, 'page') and self.app.page:
-						self.app.page.update()
-					return
-
-				# Buscar id do interticio
-				query_interticio = "SELECT id FROM interticios WHERE nome = ?"
-				result_interticio = self.app.db.execute_query(query_interticio, (valor_interticio,))
-
-				if not result_interticio:
-					# Intertício não encontrado
-					horas_disp_text.content.value = f"Horas disponíveis para {valor_interticio}:"
-					horas_disp_number.content.value = "Intertício não encontrado"
-					horas_disp_number.content.color = ft.Colors.RED
-					if hasattr(self.app, 'page') and self.app.page:
-						self.app.page.update()
-					return
-
-				interticio_id = result_interticio[0]["id"]
-
-				# Buscar e somar horas
-				query_horas = "SELECT SUM(qty_horas) as total_horas FROM horasextras WHERE interticio_id = ? AND tipo = ?"
-				result_horas = self.app.db.execute_query(query_horas, (interticio_id, tipo))
-
-				if result_horas and result_horas[0]["total_horas"] is not None:
-					total_horas = result_horas[0]["total_horas"]
-				else:
-					total_horas = 0
-
-				# Atualizar textos
-				horas_disp_text.content.value = f"Horas disponíveis para {valor_interticio}:"
-				horas_disp_number.content.value = f"{total_horas} horas"
-				horas_disp_number.content.color = ft.Colors.BLACK if total_horas >= 0 else ft.Colors.RED
-
-				# Atualizar a tela
-				if hasattr(self.app, 'page') and self.app.page:
-					self.app.page.update()
-
-			except Exception as ex:
-				print(f"Erro ao buscar horas: {ex}")
-				horas_disp_text.content.value = "Erro ao buscar horas"
-				horas_disp_number.content.value = "Erro"
-				horas_disp_number.content.color = ft.Colors.RED
-				if hasattr(self.app, 'page') and self.app.page:
-					self.app.page.update()
-
-		def mostrar_alerta(sucesso=True, mensagem=""):
-			if hasattr(self.app, 'page') and self.app.page:
-				show_alert_dialog(self.app.page, mensagem, sucesso)
-			else:
-				# Fallback para snackbar se o page não estiver disponível
-				if sucesso:
-					self.show_success(mensagem)
-				else:
-					self.show_error(mensagem)
-
-		def salvar_alteracoes(e):
-			try:
-				valor_operacao = dropdown_operacao.value
-				valor_horas = textfield_horas.value
-				valor_interticio = textfield_interticio.value
-				tipo = dropdown_tipo.value
-
-				if not valor_operacao or not valor_horas or not valor_interticio or not tipo:
-					mostrar_alerta(False, "Preencha todos os campos!")
-					return
-
-				# Determina valor positivo ou negativo
-				qty_horas = int(valor_horas)
-				if "Remover" in valor_operacao:
-					qty_horas = -qty_horas
-
-				# Buscar id do interticio
-				query = "SELECT id FROM interticios WHERE nome = ?"
-				result = self.app.db.execute_query(query, (valor_interticio,))
-				if not result:
-					mostrar_alerta(False, "Intertício não encontrado!")
-					return
-				interticio_id = result[0]["id"]
-
-				# Data atual dd/mm/aaaa
-				from datetime import datetime
-				data_entrada = datetime.now().strftime("%d/%m/%Y")
-
-				# Inserir na tabela horasextras
-				command = "INSERT INTO horasextras (qty_horas, interticio_id, tipo, data_entrada) VALUES (?, ?, ?, ?)"
-				sucesso = self.app.db.execute_command(command, (qty_horas, interticio_id, tipo, data_entrada))
-
-				if sucesso:
-					mostrar_alerta(True, "Dados salvos com sucesso!")
-					# Atualizar as horas disponíveis após salvar
-					buscar_horas_disponiveis()
-				else:
-					mostrar_alerta(False, "Erro ao salvar no banco!")
-			except Exception as ex:
-				mostrar_alerta(False, f"Erro: {ex}")
-
-		btn_row = ft.ElevatedButton(
-			text="Salvar Alterações",
-			width=150,
-			bgcolor=ft.Colors.WHITE,
-			style=ft.ButtonStyle(
-				color=ft.Colors.GREEN,
-				text_style=ft.TextStyle(size=12, weight=ft.FontWeight.BOLD),
-				shape=ft.RoundedRectangleBorder(radius=8),
-				side=ft.BorderSide(1, ft.Colors.GREEN)),
-			icon=ft.Icons.SAVE,
-			on_click=salvar_alteracoes,
-			visible=True
-		)
-
-		return ft.Container(
-			content=ft.Column(
-				controls=[header,
-						  row1,
-						  row2,
-						  row3,
-						  row4,
-						  # row5,
-						  ft.Container(height=10),
-						  btn_row,
-						  ft.Container(height=10),
-						  horas_disp_text,
-						  horas_disp_number],
-				horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-				alignment=ft.MainAxisAlignment.START,
-				spacing=15
-			),
-			alignment=ft.alignment.center,
-			expand=True
-		)
+		return ft.Column([
+			header,
+			ft.Row([
+				card_backup_db(),
+				card_import_db(),
+			], spacing=20, alignment=ft.MainAxisAlignment.CENTER)
+		], horizontal_alignment=ft.CrossAxisAlignment.CENTER)

@@ -22,6 +22,7 @@ from screens.cadastrar_extra_screen import CadastrarExtraScreen
 from screens.consultar_extras_screen import ConsultarExtrasScreen
 from screens.disponibilidade_ferias_screen import DisponibilidadeFeriasScreen
 from screens.banco_dados_screen import BancoDadosScreen
+from screens.import_db_screen import ImportDBScreen
 from database.database_manager import DatabaseManager
 from pathlib import Path
 import os, sys, shutil, traceback, json
@@ -185,6 +186,7 @@ class MainApp:
                 "cadastrar_ausencia": CadastrarAusenciasScreen(self),
                 "consultar_ausencias": ConsultarAusenciasScreen(self),
                 "banco_dados": BancoDadosScreen(self),
+                "import_db": ImportDBScreen(self),
             }
 
             # Container para o conteúdo dinâmico

@@ -34,49 +34,16 @@ class CadastroScreen(BaseScreen):
             alignment=ft.alignment.center
         )
 
-        def card_cadastro_policial() -> ft.Control:
-            return ft.Container(
-                content=ft.Column(
-                    controls=[
-                        ft.Text("👮 Cadastrar Policial", size=18, weight=ft.FontWeight.BOLD),
-                        ft.Text("Gerenciar cadastro de policiais", size=12, color=ft.Colors.GREY),
-                        ft.Container(height=20),
-                        ft.TextButton(
-                            text="Abrir",
-                            icon=ft.Icons.ARROW_FORWARD,
-                            on_click=lambda e: self.navigate_to("cadastro_policial"),
-                        ),
-                    ],
-                    horizontal_alignment=ft.CrossAxisAlignment.START,
-                    spacing=5,
-                ),
-                padding=ft.padding.all(8),
-                border=ft.border.all(1, ft.Colors.GREY),
-                border_radius=12,
-                bgcolor=ft.Colors.WHITE,
-                width=260,
-                height=140
-            )
-
-        grid = ft.Row(
-            controls=[card_cadastro_policial()],
-            spacing=20,
-            alignment=ft.MainAxisAlignment.CENTER,
-            wrap=True
-        )
-
         card_cadastro = ft.Card(
             content=ft.Container(
                 content=ft.Column([
                     ft.Text("👮 Cadastrar Policial", size=18, weight=ft.FontWeight.BOLD),
                     ft.Text("Cadastrar novo PP", size=12, color=ft.Colors.GREY),
-                    #ft.Icon(ft.Icons.PERSON_ADD, size=40),
                     ft.TextButton(
                         text="Abrir",
                         icon=ft.Icons.ARROW_FORWARD,
                         on_click=self.ir_para_cadastro_policial
                     )
-                    #ft.ElevatedButton("Cadastrar", on_click=self.ir_para_cadastro_policial)
                 ], alignment=ft.MainAxisAlignment.CENTER),
                 padding=ft.padding.all(8),
                 border=ft.border.all(1, ft.Colors.GREY),
@@ -91,9 +58,6 @@ class CadastroScreen(BaseScreen):
                 content=ft.Column([
                     ft.Text("📝 Alterar Cadastro", size=18, weight=ft.FontWeight.BOLD),
                     ft.Text("Alterar dados do PP", size=12, color=ft.Colors.GREY),
-                    #ft.Icon(ft.Icons.EDIT, size=40),
-                    #ft.ElevatedButton("Alterar", on_click=self.ir_para_edicao_registros),
-                    #ft.Container(height=20),
                     ft.TextButton(
                         text="Abrir",
                         icon=ft.Icons.ARROW_FORWARD,
