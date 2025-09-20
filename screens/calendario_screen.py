@@ -28,8 +28,8 @@ class CalendarioScreen(BaseScreen):
 		)
 
 		pt_weekdays = [
-			"Segunda-feira", "Terça-feira", "Quarta-feira",
-			"Quinta-feira", "Sexta-feira", "Sábado", "Domingo"
+			"Segunda", "Terça", "Quarta",
+			"Quinta", "Sexta", "Sábado", "Domingo"
 		]
 
 		def exportar_pdf(e):
@@ -164,19 +164,31 @@ class CalendarioScreen(BaseScreen):
 		data = ft.TextField(label="Data", width=btn_data.width, hint_text="dd/mm/aaaa", bgcolor=ft.Colors.WHITE)
 		data.on_change = mascara_data
 
-		row1 = ft.Row(
-			controls=[btn_data, data],
-			spacing=20,
-			alignment=ft.MainAxisAlignment.CENTER
-		)
-
-
 		team_text = ft.Text(
 			value=f"{weekday} - Equipe {equipe}",
 			size=14,
 			weight=ft.FontWeight.BOLD,
 
 		)
+
+		cont_team_text = ft.Container(
+					content=team_text,
+					bgcolor=ft.Colors.WHITE,
+					width=btn_data.width,
+					height=btn_data.height,
+					alignment=ft.alignment.center,
+					border_radius=4,
+					border=ft.border.all(1, ft.Colors.BLACK)
+				)
+
+		row1 = ft.Row(
+			controls=[btn_data, data, cont_team_text],
+			spacing=20,
+			alignment=ft.MainAxisAlignment.CENTER
+		)
+
+
+
 
 		# Inicializa com a data de hoje e atualiza equipe/weekday (nome do dia)
 		try:
@@ -295,8 +307,8 @@ class CalendarioScreen(BaseScreen):
 			e.control.content.border = None
 			e.control.update()
 
-		# Cria Draggable para um policial
-		def make_draggable_policial(policial: dict) -> ft.Draggable:
+		# Cria Draggable para um policial com cor específica por tipo
+		def make_draggable_policial(policial: dict, tipo: str = "padrao") -> ft.Draggable:
 			label = policial.get("qra") or policial.get("nome") or "POL"
 			item_id = str(uuid.uuid4())
 			# registra mapeamento para consultas futuras (férias, etc.)
@@ -305,21 +317,35 @@ class CalendarioScreen(BaseScreen):
 					"id": policial.get("id"),
 					"nome": policial.get("nome"),
 					"qra": policial.get("qra"),
+					"tipo": tipo,
+					"data_compensacao": policial.get("data_compensacao"),  # Para compensações
+					"data_a_compensar": policial.get("data_a_compensar"),  # Para compensações
 				}
 			except Exception:
 				pass
+			# Define cor baseada no tipo
+			cores = {
+				"padrao": ft.Colors.LIGHT_GREEN,      # Verde claro - adição padrão inicial
+				"obll": ft.Colors.YELLOW,             # Amarelo - OBLL
+				"ferias": ft.Colors.BLUE_GREY_300,    # Azul acinzentado - Férias
+				"licencas": ft.Colors.ORANGE,         # Laranja - Licenças
+				"ausencias": ft.Colors.WHITE,         # Branco - Ausências (não licenças)
+				"compensacao": ft.Colors.BROWN_200,   # Marrom claro - Compensações
+			}
+			bgcolor = cores.get(tipo, ft.Colors.LIGHT_GREEN)
+			
 			return ft.Draggable(
 				group="policiais",
 				data=item_id,
 				content=ft.Container(
 					content=ft.Text(label, size=12, text_align=ft.TextAlign.CENTER, weight=ft.FontWeight.BOLD),
-					bgcolor=ft.Colors.ORANGE,
+					bgcolor=bgcolor,
 					padding=8,
 					border_radius=6,
 					alignment=ft.alignment.center,
 					data=item_id,
 				),
-				content_feedback=ft.Container(width=20, height=20, bgcolor=ft.Colors.BLUE_100, border_radius=4),
+				content_feedback=ft.Container(width=20, height=20, bgcolor=bgcolor, border_radius=4),
 			)
 
 		# Atualiza UI das colunas
@@ -381,13 +407,13 @@ class CalendarioScreen(BaseScreen):
 			random.shuffle(policiais)
 			# até 4 em col1
 			for p in policiais[:4]:
-				col_items["col1"].append(make_draggable_policial(p))
+				col_items["col1"].append(make_draggable_policial(p, "padrao"))
 			# próximos 2 em col3
 			for p in policiais[4:6]:
-				col_items["col3"].append(make_draggable_policial(p))
+				col_items["col3"].append(make_draggable_policial(p, "padrao"))
 			# restante em col2
 			for p in policiais[6:]:
-				col_items["col2"].append(make_draggable_policial(p))
+				col_items["col2"].append(make_draggable_policial(p, "padrao"))
 			update_columns()
 
 		# --- OBLL: buscar policiais marcados para OBLL na data ---
@@ -510,7 +536,7 @@ class CalendarioScreen(BaseScreen):
 								# cria novo draggable para a coluna férias baseado nos dados do id_map
 								pinfo = id_map.get(getattr(it, "data", ""), {})
 								print(f"[Férias] Removendo de {key} e adicionando em Férias:", pinfo)
-								col_items["col5"].append(make_draggable_policial(pinfo))
+								col_items["col5"].append(make_draggable_policial(pinfo, "ferias"))
 								rem.append(it)
 						# remove os marcados
 						for it in rem:
@@ -592,7 +618,7 @@ class CalendarioScreen(BaseScreen):
 							if pid in lic_ids:
 								pinfo = id_map.get(getattr(it, "data", ""), {})
 								print(f"[Licenças] Removendo de {key} e adicionando em Licenças:", pinfo)
-								col_items["col6"].append(make_draggable_policial(pinfo))
+								col_items["col6"].append(make_draggable_policial(pinfo, "licencas"))
 								rem.append(it)
 						for it in rem:
 							col_items[key].remove(it)
@@ -606,7 +632,7 @@ class CalendarioScreen(BaseScreen):
 							if pid in aus_ids:
 								pinfo = id_map.get(getattr(it, "data", ""), {})
 								print(f"[Ausências] Removendo de {key} e adicionando em Ausências:", pinfo)
-								col_items["col7"].append(make_draggable_policial(pinfo))
+								col_items["col7"].append(make_draggable_policial(pinfo, "ausencias"))
 								rem.append(it)
 						for it in rem:
 							col_items[key].remove(it)
@@ -615,12 +641,102 @@ class CalendarioScreen(BaseScreen):
 				print("[Licenças/Ausências] Erro ao aplicar:", ex)
 				return
 
+		# --- COMPENSAÇÕES: buscar policiais por compensação e a_compensar ---
+		def aplicar_compensacoes(data_ddmmyyyy: str):
+			try:
+				data_iso = ddmmyyyy_to_yyyymmdd(data_ddmmyyyy)
+				if not data_iso:
+					return
+				print(f"[Compensações] Verificando compensações para data {data_iso}")
+				
+				# 1) Buscar policiais que devem trabalhar na data (coluna compensacao)
+				rows_trabalhar = db.execute_query(
+					"SELECT policial_id, compensacao, a_compensar FROM compensacoes WHERE compensacao = ?",
+					(data_iso,)
+				)
+				print(f"[Compensações] Policiais que devem trabalhar hoje: {len(rows_trabalhar)}")
+				
+				for r in rows_trabalhar:
+					pid = r["policial_id"] if "policial_id" in r.keys() else None
+					if pid:
+						# Buscar dados do policial
+						pol_rows = db.execute_query("SELECT id, nome, qra FROM policiais WHERE id = ?", (pid,))
+						if pol_rows:
+							pol = pol_rows[0]
+							pol_data = {
+								"id": pol["id"] if "id" in pol.keys() else None,
+								"nome": pol["nome"] if "nome" in pol.keys() else None,
+								"qra": pol["qra"] if "qra" in pol.keys() else None,
+								"data_compensacao": r["compensacao"] if "compensacao" in r.keys() else None,
+								"data_a_compensar": r["a_compensar"] if "a_compensar" in r.keys() else None,
+							}
+							# Distribuir entre acessos (similar à distribuição padrão)
+							# Prioridade: col1 (até 4), col3 (até 2), col2 (restante)
+							if len(col_items["col1"]) < 4:
+								col_items["col1"].append(make_draggable_policial(pol_data, "compensacao"))
+							elif len(col_items["col3"]) < 2:
+								col_items["col3"].append(make_draggable_policial(pol_data, "compensacao"))
+							else:
+								col_items["col2"].append(make_draggable_policial(pol_data, "compensacao"))
+							print(f"[Compensações] Adicionado aos acessos: {pol_data.get('qra') or pol_data.get('nome')}")
+				
+				# 2) Buscar policiais que devem compensar na data (coluna a_compensar)
+				rows_compensar = db.execute_query(
+					"SELECT policial_id, compensacao, a_compensar FROM compensacoes WHERE a_compensar = ?",
+					(data_iso,)
+				)
+				print(f"[Compensações] Policiais que devem compensar hoje: {len(rows_compensar)}")
+				
+				# Coletar IDs dos policiais que devem compensar
+				compensar_ids = set()
+				for r in rows_compensar:
+					pid = r["policial_id"] if "policial_id" in r.keys() else None
+					if pid:
+						compensar_ids.add(pid)
+				
+				# Remover dos acessos os policiais que devem compensar
+				if compensar_ids:
+					print(f"[Compensações] Removendo dos acessos policiais que devem compensar: {compensar_ids}")
+					for key in ["col1", "col2", "col3"]:
+						rem = []
+						for it in col_items[key]:
+							pid = id_map.get(getattr(it, "data", ""), {}).get("id")
+							if pid in compensar_ids:
+								rem.append(it)
+								print(f"[Compensações] Removendo de {key}: {id_map.get(getattr(it, 'data', ''), {}).get('qra') or id_map.get(getattr(it, 'data', ''), {}).get('nome')}")
+						for it in rem:
+							col_items[key].remove(it)
+				
+				# Adicionar à coluna Ausências
+				for r in rows_compensar:
+					pid = r["policial_id"] if "policial_id" in r.keys() else None
+					if pid:
+						# Buscar dados do policial
+						pol_rows = db.execute_query("SELECT id, nome, qra FROM policiais WHERE id = ?", (pid,))
+						if pol_rows:
+							pol = pol_rows[0]
+							pol_data = {
+								"id": pol["id"] if "id" in pol.keys() else None,
+								"nome": pol["nome"] if "nome" in pol.keys() else None,
+								"qra": pol["qra"] if "qra" in pol.keys() else None,
+								"data_compensacao": r["compensacao"] if "compensacao" in r.keys() else None,
+								"data_a_compensar": r["a_compensar"] if "a_compensar" in r.keys() else None,
+							}
+							# Adicionar à coluna Ausências
+							col_items["col7"].append(make_draggable_policial(pol_data, "compensacao"))
+							print(f"[Compensações] Adicionado às ausências: {pol_data.get('qra') or pol_data.get('nome')}")
+				
+				update_columns()
+			except Exception as ex:
+				print("[Compensações] Erro ao aplicar compensações:", ex)
+				return
+
 		def preencher_coluna_obll(data_ddmmyyyy: str):
 			# limpa somente a coluna OBLL (col4)
 			col_items["col4"].clear()
 			obll = buscar_obll_para_data(data_ddmmyyyy)
 			for p in obll:
-				col_items["col4"].append(make_draggable_policial(p))
+				col_items["col4"].append(make_draggable_policial(p, "obll"))
 			update_columns()
 
 		# Monta as 7 colunas com títulos e DragTargets
@@ -664,6 +780,8 @@ class CalendarioScreen(BaseScreen):
 			pols = buscar_policiais_elegiveis(equipe, data.value)
 			print(f"[Calendario] Policiais elegíveis ({len(pols)}):", [p.get("qra") or p.get("nome") for p in pols])
 			distribuir_policiais(pols)
+			# Aplica compensações: adiciona aos acessos e ausências
+			aplicar_compensacoes(data.value)
 			# Aplica férias e licenças: movem de acessos para colunas específicas
 			aplicar_ferias(data.value)
 			aplicar_licencas(data.value)
@@ -678,11 +796,130 @@ class CalendarioScreen(BaseScreen):
 		# Atualiza tabela ao carregar e após mudanças de data/equipe
 		refresh_tabela_para_data_atual()
 
+		legenda = ft.Row(
+			controls=[
+				ft.Container(
+					content=ft.Text(value="Legenda",
+									size=14,
+									weight=ft.FontWeight.BOLD,
+									color=ft.Colors.BLACK,
+									text_align=ft.TextAlign.CENTER),
+					#bgcolor=ft.Colors.LIGHT_GREEN,
+					width=120,
+					alignment=ft.alignment.center,
+					border_radius=4,
+					border=ft.border.all(1, ft.Colors.BLACK45)
+				),
+
+				ft.Container(
+					content=ft.Text(value="Plantão",
+									size=12,
+									weight=ft.FontWeight.BOLD,
+									color=ft.Colors.BLACK,
+									text_align=ft.TextAlign.CENTER),
+					bgcolor=ft.Colors.LIGHT_GREEN,
+					width=120,
+					alignment=ft.alignment.center,
+					border_radius=4,
+					border=ft.border.all(1, ft.Colors.BLACK45)
+				),
+
+				ft.Container(
+					content=ft.Text(value="Extra diurno",
+									size=12,
+									weight=ft.FontWeight.BOLD,
+									color=ft.Colors.BLACK,
+									text_align=ft.TextAlign.CENTER),
+					bgcolor=ft.Colors.BLUE_200,
+					width=120,
+					alignment=ft.alignment.center,
+					border_radius=4,
+					border=ft.border.all(1, ft.Colors.BLACK45)
+				),
+
+				ft.Container(
+					content=ft.Text(value="Extra Noturno",
+									size=12,
+									weight=ft.FontWeight.BOLD,
+									color=ft.Colors.BLACK,
+									text_align=ft.TextAlign.CENTER),
+					bgcolor=ft.Colors.INDIGO_200,
+					width = 120,
+					alignment = ft.alignment.center,
+					border_radius=4,
+					border=ft.border.all(1, ft.Colors.BLACK45)
+				),
+
+				# ft.Container(
+				# 	content=ft.Text(value="OBLL",
+				# 					size=12,
+				# 					weight=ft.FontWeight.BOLD,
+				# 					color=ft.Colors.BLACK),
+				# 	bgcolor=ft.Colors.YELLOW,
+				# 	width=120,
+				# 	alignment=ft.alignment.center,
+				# 	border_radius=4,
+				# 	border=ft.border.all(1, ft.Colors.BLACK45)
+				# ),
+				#
+				# ft.Container(
+				# 	content=ft.Text(value="Licenças",
+				# 					size=12,
+				# 					weight=ft.FontWeight.BOLD,
+				# 					color=ft.Colors.BLACK),
+				# 	bgcolor=ft.Colors.ORANGE,
+				# 	width=120,
+				# 	alignment=ft.alignment.center,
+				# 	border_radius=4,
+				# 	border=ft.border.all(1, ft.Colors.BLACK45)
+				# ),
+				#
+				# ft.Container(
+				# 	content=ft.Text(value="Ausências",
+				# 					size=12,
+				# 					weight=ft.FontWeight.BOLD,
+				# 					color=ft.Colors.BLACK),
+				# 	bgcolor=ft.Colors.WHITE,
+				# 	width=120,
+				# 	alignment=ft.alignment.center,
+				# 	border_radius=4,
+				# 	border=ft.border.all(1, ft.Colors.BLACK45)
+				# ),
+
+				ft.Container(
+					content=ft.Text(value="Permuta",
+									size=12,
+									weight=ft.FontWeight.BOLD,
+									color=ft.Colors.BLACK),
+					bgcolor=ft.Colors.GREY_400,
+					width=120,
+					alignment=ft.alignment.center,
+					border_radius=4,
+					border=ft.border.all(1, ft.Colors.BLACK45)
+				),
+
+				ft.Container(
+					content=ft.Text(value="Compensação",
+									size=12,
+									weight=ft.FontWeight.BOLD,
+									color=ft.Colors.BLACK),
+					bgcolor=ft.Colors.BROWN_200,
+					width=120,
+					alignment=ft.alignment.center,
+					border_radius=4,
+					border=ft.border.all(1, ft.Colors.BLACK45)
+				),
+
+			],
+			spacing=20,
+			alignment=ft.MainAxisAlignment.CENTER,
+
+		)
 
 		return ft.Column(
 			controls=[header,
 					  row1,
-					  team_text,
+					  legenda,
 					  container_tabela_dinamica,
 					  row2],
 			horizontal_alignment=ft.CrossAxisAlignment.CENTER,
