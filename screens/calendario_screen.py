@@ -331,6 +331,9 @@ class CalendarioScreen(BaseScreen):
 				"licencas": ft.Colors.ORANGE,         # Laranja - Licenças
 				"ausencias": ft.Colors.WHITE,         # Branco - Ausências (não licenças)
 				"compensacao": ft.Colors.BROWN_200,   # Marrom claro - Compensações
+				"permuta": ft.Colors.GREY_400,        # Cinza - Permutas
+				"extra_diurno": ft.Colors.BLUE_200,   # Azul - Extra Diurno
+				"extra_noturno": ft.Colors.INDIGO_200, # Índigo - Extra Noturno
 			}
 			bgcolor = cores.get(tipo, ft.Colors.LIGHT_GREEN)
 			
@@ -731,6 +734,229 @@ class CalendarioScreen(BaseScreen):
 				print("[Compensações] Erro ao aplicar compensações:", ex)
 				return
 
+		# --- PERMUTAS: buscar e aplicar permutas por data_solicitante e data_permutado ---
+		def aplicar_permutas(data_ddmmyyyy: str):
+			try:
+				data_iso = ddmmyyyy_to_yyyymmdd(data_ddmmyyyy)
+				if not data_iso:
+					return
+				print(f"[Permutas] Verificando permutas para data {data_iso}")
+				
+				# Dicionários para armazenar dados das permutas
+				permutas_solicitante = {}
+				permutas_permutado = {}
+				
+				# 1) Buscar permutas onde data_solicitante = data selecionada
+				rows_solicitante = db.execute_query(
+					"SELECT solicitante, permutado, data_solicitante, data_permutado FROM permutas WHERE data_solicitante = ?",
+					(data_iso,)
+				)
+				print(f"[Permutas] Permutas por data_solicitante: {len(rows_solicitante)}")
+				
+				for r in rows_solicitante:
+					solicitante_id = r["solicitante"] if "solicitante" in r.keys() else None
+					permutado_id = r["permutado"] if "permutado" in r.keys() else None
+					data_solicitante = r["data_solicitante"] if "data_solicitante" in r.keys() else None
+					data_permutado = r["data_permutado"] if "data_permutado" in r.keys() else None
+					
+					if solicitante_id and permutado_id:
+						# Armazenar dados da permuta
+						permuta_key = f"{solicitante_id}_{permutado_id}_{data_solicitante}"
+						permutas_solicitante[permuta_key] = {
+							"solicitante_id": solicitante_id,
+							"permutado_id": permutado_id,
+							"data_solicitante": data_solicitante,
+							"data_permutado": data_permutado,
+							"tipo": "solicitante_sai"
+						}
+						
+						# Remover solicitante dos acessos e mover para ausências
+						_processar_permuta_solicitante_sai(solicitante_id, permutado_id)
+				
+				# 2) Buscar permutas onde data_permutado = data selecionada
+				rows_permutado = db.execute_query(
+					"SELECT solicitante, permutado, data_solicitante, data_permutado FROM permutas WHERE data_permutado = ?",
+					(data_iso,)
+				)
+				print(f"[Permutas] Permutas por data_permutado: {len(rows_permutado)}")
+				
+				for r in rows_permutado:
+					solicitante_id = r["solicitante"] if "solicitante" in r.keys() else None
+					permutado_id = r["permutado"] if "permutado" in r.keys() else None
+					data_solicitante = r["data_solicitante"] if "data_solicitante" in r.keys() else None
+					data_permutado = r["data_permutado"] if "data_permutado" in r.keys() else None
+					
+					if solicitante_id and permutado_id:
+						# Armazenar dados da permuta
+						permuta_key = f"{solicitante_id}_{permutado_id}_{data_permutado}"
+						permutas_permutado[permuta_key] = {
+							"solicitante_id": solicitante_id,
+							"permutado_id": permutado_id,
+							"data_solicitante": data_solicitante,
+							"data_permutado": data_permutado,
+							"tipo": "permutado_sai"
+						}
+						
+						# Remover permutado dos acessos e mover para ausências
+						_processar_permuta_permutado_sai(solicitante_id, permutado_id)
+				
+				# Imprimir dicionários no console
+				print(f"O dicionário permutas_solicitante é: {permutas_solicitante}")
+				print(f"O dicionário permutas_permutado é: {permutas_permutado}")
+				
+				update_columns()
+			except Exception as ex:
+				print("[Permutas] Erro ao aplicar permutas:", ex)
+				return
+
+		def _processar_permuta_solicitante_sai(solicitante_id: int, permutado_id: int):
+			"""Processa permuta quando solicitante deve sair (data_solicitante = data selecionada)"""
+			# Buscar dados dos policiais
+			sol_rows = db.execute_query("SELECT id, nome, qra FROM policiais WHERE id = ?", (solicitante_id,))
+			perm_rows = db.execute_query("SELECT id, nome, qra FROM policiais WHERE id = ?", (permutado_id,))
+			
+			if not sol_rows or not perm_rows:
+				return
+			
+			solicitante_data = {
+				"id": sol_rows[0]["id"] if "id" in sol_rows[0].keys() else None,
+				"nome": sol_rows[0]["nome"] if "nome" in sol_rows[0].keys() else None,
+				"qra": sol_rows[0]["qra"] if "qra" in sol_rows[0].keys() else None,
+			}
+			
+			permutado_data = {
+				"id": perm_rows[0]["id"] if "id" in perm_rows[0].keys() else None,
+				"nome": perm_rows[0]["nome"] if "nome" in perm_rows[0].keys() else None,
+				"qra": perm_rows[0]["qra"] if "qra" in perm_rows[0].keys() else None,
+			}
+			
+			# Remover solicitante dos acessos
+			for key in ["col1", "col2", "col3"]:
+				rem = []
+				for it in col_items[key]:
+					pid = id_map.get(getattr(it, "data", ""), {}).get("id")
+					if pid == solicitante_id:
+						rem.append(it)
+						print(f"[Permutas] Removendo solicitante de {key}: {solicitante_data.get('qra') or solicitante_data.get('nome')}")
+				for it in rem:
+					col_items[key].remove(it)
+			
+			# Adicionar solicitante às ausências
+			col_items["col7"].append(make_draggable_policial(solicitante_data, "permuta"))
+			print(f"[Permutas] Solicitante adicionado às ausências: {solicitante_data.get('qra') or solicitante_data.get('nome')}")
+			
+			# Adicionar permutado aos acessos
+			if len(col_items["col1"]) < 4:
+				col_items["col1"].append(make_draggable_policial(permutado_data, "permuta"))
+			elif len(col_items["col3"]) < 2:
+				col_items["col3"].append(make_draggable_policial(permutado_data, "permuta"))
+			else:
+				col_items["col2"].append(make_draggable_policial(permutado_data, "permuta"))
+			print(f"[Permutas] Permutado adicionado aos acessos: {permutado_data.get('qra') or permutado_data.get('nome')}")
+
+		def _processar_permuta_permutado_sai(solicitante_id: int, permutado_id: int):
+			"""Processa permuta quando permutado deve sair (data_permutado = data selecionada)"""
+			# Buscar dados dos policiais
+			sol_rows = db.execute_query("SELECT id, nome, qra FROM policiais WHERE id = ?", (solicitante_id,))
+			perm_rows = db.execute_query("SELECT id, nome, qra FROM policiais WHERE id = ?", (permutado_id,))
+			
+			if not sol_rows or not perm_rows:
+				return
+			
+			solicitante_data = {
+				"id": sol_rows[0]["id"] if "id" in sol_rows[0].keys() else None,
+				"nome": sol_rows[0]["nome"] if "nome" in sol_rows[0].keys() else None,
+				"qra": sol_rows[0]["qra"] if "qra" in sol_rows[0].keys() else None,
+			}
+			
+			permutado_data = {
+				"id": perm_rows[0]["id"] if "id" in perm_rows[0].keys() else None,
+				"nome": perm_rows[0]["nome"] if "nome" in perm_rows[0].keys() else None,
+				"qra": perm_rows[0]["qra"] if "qra" in perm_rows[0].keys() else None,
+			}
+			
+			# Remover permutado dos acessos
+			for key in ["col1", "col2", "col3"]:
+				rem = []
+				for it in col_items[key]:
+					pid = id_map.get(getattr(it, "data", ""), {}).get("id")
+					if pid == permutado_id:
+						rem.append(it)
+						print(f"[Permutas] Removendo permutado de {key}: {permutado_data.get('qra') or permutado_data.get('nome')}")
+				for it in rem:
+					col_items[key].remove(it)
+			
+			# Adicionar permutado às ausências
+			col_items["col7"].append(make_draggable_policial(permutado_data, "permuta"))
+			print(f"[Permutas] Permutado adicionado às ausências: {permutado_data.get('qra') or permutado_data.get('nome')}")
+			
+			# Adicionar solicitante aos acessos
+			if len(col_items["col1"]) < 4:
+				col_items["col1"].append(make_draggable_policial(solicitante_data, "permuta"))
+			elif len(col_items["col3"]) < 2:
+				col_items["col3"].append(make_draggable_policial(solicitante_data, "permuta"))
+			else:
+				col_items["col2"].append(make_draggable_policial(solicitante_data, "permuta"))
+			print(f"[Permutas] Solicitante adicionado aos acessos: {solicitante_data.get('qra') or solicitante_data.get('nome')}")
+
+		# --- EXTRAS: buscar policiais de extra para operação "Rotina" na data ---
+		def aplicar_extras(data_ddmmyyyy: str):
+			try:
+				data_iso = ddmmyyyy_to_yyyymmdd(data_ddmmyyyy)
+				if not data_iso:
+					return
+				print(f"[Extras] Verificando extras para data {data_iso}")
+				
+				# Buscar extras com operação "Rotina" na data selecionada
+				rows = db.execute_query(
+					"SELECT policial_id, turno FROM extras WHERE data_id = (SELECT id FROM calendario WHERE data = ?) AND operacao = 'Rotina'",
+					(data_iso,)
+				)
+				print(f"[Extras] Extras encontrados para Rotina: {len(rows)}")
+				
+				for r in rows:
+					policial_id = r["policial_id"] if "policial_id" in r.keys() else None
+					turno = (r["turno"] if "turno" in r.keys() else "").strip().lower()
+					
+					if policial_id:
+						# Buscar dados do policial
+						pol_rows = db.execute_query("SELECT id, nome, qra FROM policiais WHERE id = ?", (policial_id,))
+						if pol_rows:
+							pol = pol_rows[0]
+							pol_data = {
+								"id": pol["id"] if "id" in pol.keys() else None,
+								"nome": pol["nome"] if "nome" in pol.keys() else None,
+								"qra": pol["qra"] if "qra" in pol.keys() else None,
+								"turno": turno,
+							}
+							
+							# Determinar tipo baseado no turno
+							if turno == "diurno":
+								tipo = "extra_diurno"
+								print(f"[Extras] Extra Diurno: {pol_data.get('qra') or pol_data.get('nome')}")
+							elif turno == "noturno":
+								tipo = "extra_noturno"
+								print(f"[Extras] Extra Noturno: {pol_data.get('qra') or pol_data.get('nome')}")
+							else:
+								tipo = "extra_diurno"  # Default para diurno se não especificado
+								print(f"[Extras] Extra (turno indefinido, assumindo diurno): {pol_data.get('qra') or pol_data.get('nome')}")
+							
+							# Distribuir entre acessos (similar à distribuição padrão)
+							# Prioridade: col1 (até 4), col3 (até 2), col2 (restante)
+							if len(col_items["col1"]) < 4:
+								col_items["col1"].append(make_draggable_policial(pol_data, tipo))
+							elif len(col_items["col3"]) < 2:
+								col_items["col3"].append(make_draggable_policial(pol_data, tipo))
+							else:
+								col_items["col2"].append(make_draggable_policial(pol_data, tipo))
+							
+							print(f"[Extras] Adicionado aos acessos: {pol_data.get('qra') or pol_data.get('nome')} ({turno})")
+				
+				update_columns()
+			except Exception as ex:
+				print("[Extras] Erro ao aplicar extras:", ex)
+				return
+
 		def preencher_coluna_obll(data_ddmmyyyy: str):
 			# limpa somente a coluna OBLL (col4)
 			col_items["col4"].clear()
@@ -782,6 +1008,10 @@ class CalendarioScreen(BaseScreen):
 			distribuir_policiais(pols)
 			# Aplica compensações: adiciona aos acessos e ausências
 			aplicar_compensacoes(data.value)
+			# Aplica permutas: troca policiais entre acessos e ausências
+			aplicar_permutas(data.value)
+			# Aplica extras: adiciona aos acessos com cores por turno
+			aplicar_extras(data.value)
 			# Aplica férias e licenças: movem de acessos para colunas específicas
 			aplicar_ferias(data.value)
 			aplicar_licencas(data.value)
