@@ -35,8 +35,504 @@ class CalendarioScreen(BaseScreen):
 		def exportar_pdf(e):
 			print(f'Exportar PDF')
 
+		def deletar_escala(e):
+			try:
+				print("[Deletar] Iniciando exclusão de escala...")
+				
+				# Verificar se temos data válida
+				if not data.value or len(data.value) != 10:
+					print("[Deletar] Erro: Data inválida")
+					show_alert_dialog(
+						"Erro na Exclusão", 
+						"Data inválida. Por favor, selecione uma data válida no formato dd/mm/aaaa.",
+						False,
+						e
+					)
+					return
+				
+				data_iso = ddmmyyyy_to_yyyymmdd(data.value)
+				if not data_iso:
+					print("[Deletar] Erro: Não foi possível converter data")
+					show_alert_dialog(
+						"Erro na Exclusão",
+						"Não foi possível converter a data. Verifique o formato (dd/mm/aaaa).",
+						False,
+						e
+					)
+					return
+				
+				print(f"[Deletar] Verificando se existe escala para {data_iso}")
+				
+				# Verificar se existe escala para esta data
+				existing = db.execute_query("SELECT escala FROM calendario WHERE data = ?", (data_iso,))
+				
+				if not existing or len(existing) == 0:
+					show_alert_dialog(
+						"Nenhuma Escala Encontrada",
+						f"Não foi encontrada nenhuma escala salva para o dia {data.value}.\n\nNão há nada para excluir.",
+						False,
+						e
+					)
+					return
+				
+				# Verificar se a escala não está vazia
+				try:
+					row = existing[0]
+					escala_atual = row['escala'] if 'escala' in row.keys() else row[0]
+				except:
+					row = existing[0]
+					escala_atual = row[0]
+				
+				if not escala_atual:
+					show_alert_dialog(
+						"Escala Vazia",
+						f"A escala para o dia {data.value} já está vazia.\n\nNão há nada para excluir.",
+						False,
+						e
+					)
+					return
+				
+				print(f"[Deletar] Escala encontrada, mostrando confirmação...")
+				
+				# Mostrar dialog de confirmação
+				show_confirmation_dialog(data.value, data_iso, e)
+				
+			except Exception as ex:
+				print(f"[Deletar] Erro ao verificar escala: {ex}")
+				import traceback
+				traceback.print_exc()
+				show_alert_dialog(
+					"Erro na Exclusão",
+					f"Ocorreu um erro inesperado ao verificar a escala:\n\n{str(ex)}",
+					False,
+					e
+				)
+
+		def show_confirmation_dialog(data_ddmmyyyy: str, data_iso: str, event):
+			"""Mostra dialog de confirmação para exclusão"""
+			try:
+				# Obter page do evento
+				page = None
+				if event:
+					if hasattr(event, 'page') and event.page:
+						page = event.page
+					elif hasattr(event, 'control') and hasattr(event.control, 'page') and event.control.page:
+						page = event.control.page
+				
+				if not page:
+					print(f"[Confirmação] Erro: Não foi possível obter page")
+					return
+				
+				import flet as ft
+				
+				def confirmar_exclusao(e):
+					page.close(dialog_confirmacao)
+					executar_exclusao(data_ddmmyyyy, data_iso, event)
+				
+				def cancelar_exclusao(e):
+					page.close(dialog_confirmacao)
+					print(f"[Confirmação] Exclusão cancelada pelo usuário")
+				
+				# Criar dialog de confirmação
+				dialog_confirmacao = ft.AlertDialog(
+					modal=True,
+					title=ft.Row(
+						controls=[
+							ft.Icon(ft.Icons.WARNING, color=ft.Colors.ORANGE, size=24),
+							ft.Text("Confirmar Exclusão", color=ft.Colors.ORANGE, weight=ft.FontWeight.BOLD, size=16)
+						],
+						alignment=ft.MainAxisAlignment.START,
+						spacing=10
+					),
+					content=ft.Text(
+						f"Tem certeza que deseja excluir a escala do dia {data_ddmmyyyy}?\n\nEsta ação não pode ser desfeita.",
+						size=14
+					),
+					actions=[
+						ft.TextButton(
+							text="Cancelar",
+							on_click=cancelar_exclusao
+						),
+						ft.TextButton(
+							text="Sim, Excluir",
+							on_click=confirmar_exclusao,
+							style=ft.ButtonStyle(color=ft.Colors.RED)
+						)
+					],
+					actions_alignment=ft.MainAxisAlignment.END,
+				)
+				
+				page.open(dialog_confirmacao)
+				print(f"[Confirmação] Dialog de confirmação aberto")
+				
+			except Exception as ex:
+				print(f"[Confirmação] Erro ao mostrar confirmação: {ex}")
+				import traceback
+				traceback.print_exc()
+
+		def executar_exclusao(data_ddmmyyyy: str, data_iso: str, event):
+			"""Executa a exclusão da escala após confirmação"""
+			try:
+				print(f"[Executar] Excluindo escala para {data_iso}")
+				
+				# Executar UPDATE para limpar a coluna escala
+				if hasattr(db, 'execute_non_query'):
+					result = db.execute_non_query(
+						"UPDATE calendario SET escala = NULL WHERE data = ?",
+						(data_iso,)
+					)
+				else:
+					result = db.execute_query(
+						"UPDATE calendario SET escala = NULL WHERE data = ?",
+						(data_iso,)
+					)
+				
+				print(f"[Executar] UPDATE executado - Resultado: {result}")
+				
+				# Forçar commit
+				if hasattr(db, 'commit'):
+					db.commit()
+					print(f"[Executar] Commit executado")
+				elif hasattr(db, 'connection') and hasattr(db.connection, 'commit'):
+					db.connection.commit()
+					print(f"[Executar] Commit da conexão executado")
+				
+				# Verificar se foi excluído
+				verificacao = db.execute_query("SELECT escala FROM calendario WHERE data = ?", (data_iso,))
+				if verificacao and len(verificacao) > 0:
+					try:
+						row = verificacao[0]
+						escala_verificacao = row['escala'] if 'escala' in row.keys() else row[0]
+					except:
+						row = verificacao[0]
+						escala_verificacao = row[0]
+					
+					if not escala_verificacao:
+						print(f"[Executar] ✓ Escala excluída com sucesso")
+						show_alert_dialog(
+							"Exclusão Concluída",
+							f"A escala do dia {data_ddmmyyyy} foi excluída com sucesso!\n\nClique em Ok para fechar",
+							True,
+							event
+						)
+						# Recarregar a tela para mostrar nova distribuição
+						refresh_tabela_para_data_atual()
+					else:
+						print(f"[Executar] ✗ Escala não foi excluída")
+						show_alert_dialog(
+							"Erro na Exclusão",
+							f"Houve um problema ao excluir a escala do dia {data_ddmmyyyy}.\n\nA escala ainda está presente no banco.",
+							False,
+							event
+						)
+				else:
+					print(f"[Executar] ✗ Registro não encontrado após exclusão")
+					show_alert_dialog(
+						"Erro na Exclusão",
+						f"Não foi possível verificar a exclusão da escala do dia {data_ddmmyyyy}.",
+						False,
+						event
+					)
+				
+			except Exception as ex:
+				print(f"[Executar] Erro ao excluir escala: {ex}")
+				import traceback
+				traceback.print_exc()
+				show_alert_dialog(
+					"Erro na Exclusão",
+					f"Ocorreu um erro inesperado ao excluir a escala:\n\n{str(ex)}",
+					False,
+					event
+				)
+
+		def show_alert_dialog(title: str, message: str, is_success: bool = True, event=None):
+			"""Mostra um dialog de alerta com título e mensagem"""
+			try:
+				# Tentar diferentes formas de obter a page
+				page = None
+				
+				# Método 0: Tentar através do evento passado
+				if event:
+					try:
+						if hasattr(event, 'page') and event.page:
+							page = event.page
+							print(f"[Alert] Page obtida via event.page")
+						elif hasattr(event, 'control') and hasattr(event.control, 'page') and event.control.page:
+							page = event.control.page
+							print(f"[Alert] Page obtida via event.control.page")
+					except:
+						pass
+				
+				# Método 1: self.page
+				if not page and hasattr(self, 'page') and self.page:
+					page = self.page
+					print(f"[Alert] Page obtida via self.page")
+				
+				# Método 2: Tentar através de controles existentes
+				if not page:
+					try:
+						if hasattr(data, 'page') and data.page:
+							page = data.page
+							print(f"[Alert] Page obtida via data.page")
+					except:
+						pass
+				
+				# Método 3: Tentar através do botão salvar
+				if not page:
+					try:
+						# Vamos tentar obter através de qualquer controle que tenha page
+						for attr_name in dir(self):
+							attr = getattr(self, attr_name, None)
+							if hasattr(attr, 'page') and attr.page:
+								page = attr.page
+								print(f"[Alert] Page obtida via {attr_name}.page")
+								break
+					except:
+						pass
+				
+				# Debug: mostrar informações sobre self
+				print(f"[Alert] Debug - self type: {type(self)}")
+				print(f"[Alert] Debug - self.page exists: {hasattr(self, 'page')}")
+				print(f"[Alert] Debug - self.page value: {getattr(self, 'page', 'NOT_FOUND')}")
+				
+				if not page:
+					print(f"[Alert] ERRO: Não foi possível obter page de nenhuma forma")
+					print(f"[Alert] {title}: {message}")
+					return
+				
+				# Importar flet no escopo da função
+				import flet as ft
+				
+				# Definir cor e ícone baseado no tipo
+				if is_success:
+					icon = ft.Icons.CHECK_CIRCLE
+					icon_color = ft.Colors.GREEN
+					title_color = ft.Colors.GREEN
+				else:
+					icon = ft.Icons.ERROR
+					icon_color = ft.Colors.RED
+					title_color = ft.Colors.RED
+				
+				# Criar o dialog seguindo o padrão do exemplo
+				dialog = ft.AlertDialog(
+					modal=True,
+					title=ft.Row(
+						controls=[
+							ft.Icon(icon, color=icon_color, size=24),
+							ft.Text(title, color=title_color, weight=ft.FontWeight.BOLD, size=16)
+						],
+						alignment=ft.MainAxisAlignment.START,
+						spacing=10
+					),
+					content=ft.Text(message, size=14),
+					actions=[
+						ft.TextButton(
+							text="OK",
+							on_click=lambda e: page.close(dialog)
+						)
+					],
+					actions_alignment=ft.MainAxisAlignment.END,
+					on_dismiss=lambda e: print(f"[Alert] Dialog fechado: {title}")
+				)
+				
+				# Mostrar o dialog conforme o exemplo (sem adicionar ao overlay)
+				page.open(dialog)
+				print(f"[Alert] Dialog aberto: {title}")
+				
+			except Exception as ex:
+				print(f"[Alert] Erro ao mostrar dialog: {ex}")
+				import traceback
+				traceback.print_exc()
+
 		def salvar_escala(e):
-			print(f'Escala salva')
+			try:
+				print("Salvando escala...")
+				
+				# Verificar se temos data válida
+				if not data.value or len(data.value) != 10:
+					print("[Salvar] Erro: Data inválida")
+					show_alert_dialog(
+						"Erro no Salvamento", 
+						"Data inválida. Por favor, selecione uma data válida no formato dd/mm/aaaa.",
+						False,
+						e
+					)
+					return
+				
+				data_iso = ddmmyyyy_to_yyyymmdd(data.value)
+				if not data_iso:
+					print("[Salvar] Erro: Não foi possível converter data")
+					show_alert_dialog(
+						"Erro no Salvamento",
+						"Não foi possível converter a data. Verifique o formato (dd/mm/aaaa).",
+						False,
+						e
+					)
+					return
+				
+				print(f"[Salvar] Salvando escala para data: {data_iso}")
+				
+				# Mapear tipos para status conforme o JSON de exemplo
+				tipo_para_status = {
+					"padrao": "Plantão",
+					"obll": "OBLL", 
+					"ferias": "Férias",
+					"licencas": "Licença",
+					"ausencias": "Ausência",
+					"compensacao": "Compensação",
+					"permuta": "Permuta",
+					"extra_diurno": "Extra diurno",
+					"extra_noturno": "Extra noturno"
+				}
+				
+				# Construir estrutura JSON
+				dados = {}
+				
+				# Mapear colunas para nomes no JSON
+				col_mapping = {
+					"col1": "Acesso 01",
+					"col2": "Acesso 02", 
+					"col3": "Acesso 03",
+					"col4": "OBLL",
+					"col5": "Férias",
+					"col6": "Licenças",
+					"col7": "Ausências"
+				}
+				
+				# Processar cada coluna
+				for col_key, col_name in col_mapping.items():
+					dados[col_name] = []
+					
+					for item in col_items[col_key]:
+						item_data = getattr(item, "data", "")
+						policial_info = id_map.get(item_data, {})
+						
+						nome = policial_info.get("qra") or policial_info.get("nome") or "DESCONHECIDO"
+						tipo = policial_info.get("tipo", "padrao")
+						status = tipo_para_status.get(tipo, "Plantão")
+						
+						dados[col_name].append({
+							"nome": nome,
+							"status": status
+						})
+				
+				# Converter para JSON string
+				import json
+				escala_json = json.dumps(dados, ensure_ascii=False, indent=2)
+				
+				print(f"[Salvar] JSON gerado:")
+				print(escala_json)
+				
+				# Salvar no banco de dados
+				print(f"[Salvar] Iniciando salvamento no banco...")
+				
+				# Primeiro verificar se já existe registro para esta data
+				existing = db.execute_query("SELECT id FROM calendario WHERE data = ?", (data_iso,))
+				print(f"[Salvar] Verificando se existe registro para {data_iso}: {len(existing) if existing else 0} registros encontrados")
+				
+				# Vamos tentar usar execute_non_query se disponível, ou forçar commit
+				try:
+					if existing and len(existing) > 0:
+						# Atualizar registro existente
+						print(f"[Salvar] Executando UPDATE...")
+						if hasattr(db, 'execute_non_query'):
+							result = db.execute_non_query(
+								"UPDATE calendario SET escala = ? WHERE data = ?",
+								(escala_json, data_iso)
+							)
+						else:
+							result = db.execute_query(
+								"UPDATE calendario SET escala = ? WHERE data = ?",
+								(escala_json, data_iso)
+							)
+						print(f"[Salvar] UPDATE executado - Resultado: {result}")
+					else:
+						# Inserir novo registro
+						equipe_atual = equipe if equipe else "A"
+						print(f"[Salvar] Executando INSERT com equipe {equipe_atual}...")
+						if hasattr(db, 'execute_non_query'):
+							result = db.execute_non_query(
+								"INSERT INTO calendario (data, equipe, escala) VALUES (?, ?, ?)",
+								(data_iso, equipe_atual, escala_json)
+							)
+						else:
+							result = db.execute_query(
+								"INSERT INTO calendario (data, equipe, escala) VALUES (?, ?, ?)",
+								(data_iso, equipe_atual, escala_json)
+							)
+						print(f"[Salvar] INSERT executado - Resultado: {result}")
+					
+					# Forçar commit se o método existir
+					if hasattr(db, 'commit'):
+						db.commit()
+						print(f"[Salvar] Commit executado")
+					elif hasattr(db, 'connection') and hasattr(db.connection, 'commit'):
+						db.connection.commit()
+						print(f"[Salvar] Commit da conexão executado")
+					
+				except Exception as db_ex:
+					print(f"[Salvar] Erro na operação de banco: {db_ex}")
+					raise db_ex
+				
+				# Verificar se realmente foi salvo
+				print(f"[Salvar] Verificando se foi salvo...")
+				verificacao = db.execute_query("SELECT id, data, equipe, escala FROM calendario WHERE data = ?", (data_iso,))
+				if verificacao and len(verificacao) > 0:
+					print(f"[Salvar] ✓ Verificação: Escala foi salva corretamente no banco")
+					
+					# Acessar dados do sqlite3.Row usando índices ou chaves
+					row = verificacao[0]
+					try:
+						# Tentar acessar por chave primeiro
+						row_id = row['id'] if 'id' in row.keys() else row[0]
+						row_data = row['data'] if 'data' in row.keys() else row[1] 
+						row_equipe = row['equipe'] if 'equipe' in row.keys() else row[2]
+						row_escala = row['escala'] if 'escala' in row.keys() else row[3]
+					except:
+						# Fallback para índices
+						row_id = row[0]
+						row_data = row[1]
+						row_equipe = row[2] 
+						row_escala = row[3]
+					
+					print(f"[Salvar] Registro encontrado: ID={row_id}, Data={row_data}, Equipe={row_equipe}")
+					
+					if row_escala:
+						print(f"[Salvar] ✓ Coluna escala contém dados (tamanho: {len(row_escala)} caracteres)")
+						print(f"[Salvar] ✓ SUCESSO: Escala foi salva corretamente!")
+					else:
+						print(f"[Salvar] ✗ Coluna escala está vazia ou NULL")
+				else:
+					print(f"[Salvar] ✗ ERRO: Escala não foi encontrada no banco após salvamento!")
+				
+				# Se chegou até aqui, verificar se realmente foi salvo
+				if row_escala:
+					print("[Salvar] Escala salva com sucesso!")
+					show_alert_dialog(
+						"Salvamento Concluído",
+						f"A escala foi salva com sucesso para o dia {data.value}!\n\nClique em Ok para fechar",
+						True,
+						e
+					)
+				else:
+					print("[Salvar] Erro: Escala não foi salva corretamente")
+					show_alert_dialog(
+						"Erro no Salvamento",
+						f"Houve um problema ao salvar a escala para o dia {data.value}.\n\nA escala não foi encontrada no banco após o salvamento.",
+						False,
+						e
+					)
+				
+			except Exception as ex:
+				print(f"[Salvar] Erro ao salvar escala: {ex}")
+				import traceback
+				traceback.print_exc()
+				show_alert_dialog(
+					"Erro no Salvamento",
+					f"Ocorreu um erro inesperado ao salvar a escala:\n\n{str(ex)}\n\nVerifique o console para mais detalhes.",
+					False,
+					e
+				)
 
 		def open_date_picker(e):
 			# Resolve page from event/control/self
@@ -124,6 +620,7 @@ class CalendarioScreen(BaseScreen):
 					color=ft.Colors.BLACK
 				)
 			),
+			tooltip="Clique para escolher a data ou digite no campo ao lado",
 			width=150,
 			height=47,
 			on_click=open_date_picker
@@ -181,8 +678,144 @@ class CalendarioScreen(BaseScreen):
 					border=ft.border.all(1, ft.Colors.BLACK)
 				)
 
+		def left_arrow(e):
+			"""Subtrai um dia da data atual"""
+			try:
+				print("[LeftArrow] Subtraindo um dia da data atual")
+				
+				if not data.value or len(data.value) != 10:
+					print("[LeftArrow] Erro: Data inválida")
+					return
+				
+				# Converter data atual para objeto datetime
+				from datetime import datetime, timedelta
+				try:
+					# Converter dd/mm/yyyy para datetime
+					data_atual = datetime.strptime(data.value, "%d/%m/%Y")
+					# Subtrair um dia
+					nova_data = data_atual - timedelta(days=1)
+					# Converter de volta para dd/mm/yyyy
+					nova_data_str = nova_data.strftime("%d/%m/%Y")
+					
+					print(f"[LeftArrow] Data alterada de {data.value} para {nova_data_str}")
+					
+					# Atualizar o campo de data
+					data.value = nova_data_str
+					
+					# Simular evento para disparar on_change (mascara_data)
+					class FakeEvent:
+						def __init__(self, control, page):
+							self.control = control
+							self.control.page = page
+					
+					# Obter page de forma mais robusta
+					page_ref = None
+					if hasattr(e, 'page') and e.page:
+						page_ref = e.page
+					elif hasattr(e, 'control') and hasattr(e.control, 'page') and e.control.page:
+						page_ref = e.control.page
+					elif self.page:
+						page_ref = self.page
+					
+					if page_ref:
+						fake_event = FakeEvent(data, page_ref)
+						
+						# Chamar a função mascara_data que é o on_change do TextField
+						try:
+							mascara_data(fake_event)
+							print(f"[LeftArrow] Evento on_change disparado com sucesso")
+						except Exception as change_ex:
+							print(f"[LeftArrow] Erro ao disparar on_change: {change_ex}")
+							# Fallback: atualizar manualmente
+							page_ref.update()
+					else:
+						print(f"[LeftArrow] Erro: Não foi possível obter page para disparar on_change")
+					
+				except ValueError as ve:
+					print(f"[LeftArrow] Erro ao converter data: {ve}")
+				
+			except Exception as ex:
+				print(f"[LeftArrow] Erro: {ex}")
+				import traceback
+				traceback.print_exc()
+
+		def right_arrow(e):
+			"""Adiciona um dia à data atual"""
+			try:
+				print("[RightArrow] Adicionando um dia à data atual")
+				
+				if not data.value or len(data.value) != 10:
+					print("[RightArrow] Erro: Data inválida")
+					return
+				
+				# Converter data atual para objeto datetime
+				from datetime import datetime, timedelta
+				try:
+					# Converter dd/mm/yyyy para datetime
+					data_atual = datetime.strptime(data.value, "%d/%m/%Y")
+					# Adicionar um dia
+					nova_data = data_atual + timedelta(days=1)
+					# Converter de volta para dd/mm/yyyy
+					nova_data_str = nova_data.strftime("%d/%m/%Y")
+					
+					print(f"[RightArrow] Data alterada de {data.value} para {nova_data_str}")
+					
+					# Atualizar o campo de data
+					data.value = nova_data_str
+					
+					# Simular evento para disparar on_change (mascara_data)
+					class FakeEvent:
+						def __init__(self, control, page):
+							self.control = control
+							self.control.page = page
+					
+					# Obter page de forma mais robusta
+					page_ref = None
+					if hasattr(e, 'page') and e.page:
+						page_ref = e.page
+					elif hasattr(e, 'control') and hasattr(e.control, 'page') and e.control.page:
+						page_ref = e.control.page
+					elif self.page:
+						page_ref = self.page
+					
+					if page_ref:
+						fake_event = FakeEvent(data, page_ref)
+						
+						# Chamar a função mascara_data que é o on_change do TextField
+						try:
+							mascara_data(fake_event)
+							print(f"[RightArrow] Evento on_change disparado com sucesso")
+						except Exception as change_ex:
+							print(f"[RightArrow] Erro ao disparar on_change: {change_ex}")
+							# Fallback: atualizar manualmente
+							page_ref.update()
+					else:
+						print(f"[RightArrow] Erro: Não foi possível obter page para disparar on_change")
+					
+				except ValueError as ve:
+					print(f"[RightArrow] Erro ao converter data: {ve}")
+				
+			except Exception as ex:
+				print(f"[RightArrow] Erro: {ex}")
+				import traceback
+				traceback.print_exc()
+
+
+		arrow_left = ft.IconButton(icon=ft.Icons.ARROW_CIRCLE_LEFT_OUTLINED,
+								   icon_color=ft.Colors.BLACK,
+								   on_click=left_arrow,
+								   icon_size=50,
+								   tooltip="Ir para dia anterior"
+								   )
+
+		arrow_right = ft.IconButton(icon=ft.Icons.ARROW_CIRCLE_RIGHT_OUTLINED,
+								   icon_color=ft.Colors.BLACK,
+									on_click=right_arrow,
+									icon_size=arrow_left.icon_size,
+									tooltip="Ir para dia seguinte")
+
 		row1 = ft.Row(
-			controls=[btn_data, data, cont_team_text],
+			controls=[arrow_left,btn_data, data, cont_team_text, arrow_right],
 			spacing=20,
 			alignment=ft.MainAxisAlignment.CENTER
 		)
@@ -207,13 +840,29 @@ class CalendarioScreen(BaseScreen):
             width=150,
             bgcolor=ft.Colors.WHITE,
             style=ft.ButtonStyle(
-                color=ft.Colors.BLACK,
+                color=ft.Colors.GREEN,
                 text_style=ft.TextStyle(size=12, weight=ft.FontWeight.BOLD),
                 shape=ft.RoundedRectangleBorder(radius=8),
-                side=ft.BorderSide(1, ft.Colors.BLACK),
+                side=ft.BorderSide(1, ft.Colors.GREEN),
             ),
+			tooltip="Salva a escala no banco de dados",
             on_click=salvar_escala
         )
+
+		btn_delete = ft.ElevatedButton(
+			text="Deletar",
+			icon=ft.Icons.DELETE,
+			width=btn_save.width,
+			bgcolor=ft.Colors.WHITE,
+			style=ft.ButtonStyle(
+				color=ft.Colors.RED,
+				text_style=ft.TextStyle(size=12, weight=ft.FontWeight.BOLD),
+				shape=ft.RoundedRectangleBorder(radius=8),
+				side=ft.BorderSide(1, ft.Colors.RED),
+			),
+			tooltip="Exclui a escala do bando de dados",
+			on_click=deletar_escala
+		)
 
 		btn_export = ft.ElevatedButton(
             text="Exportar PDF",
@@ -226,11 +875,12 @@ class CalendarioScreen(BaseScreen):
                 shape=ft.RoundedRectangleBorder(radius=8),
                 side=ft.BorderSide(1, ft.Colors.BLACK),
             ),
+			tooltip="Gera a escala em PDF",
             on_click=exportar_pdf
         )
 
 		row2 = ft.Row(
-			controls=[btn_save, btn_export],
+			controls=[btn_save, btn_delete, btn_export],
 			spacing=20,
 			alignment=ft.MainAxisAlignment.CENTER
 		)
@@ -997,12 +1647,129 @@ class CalendarioScreen(BaseScreen):
 		)
 
 		# Função para atualizar a escala do dia na tabela (chamar quando equipe/data mudarem)
+		def carregar_escala_salva(data_ddmmyyyy: str) -> bool:
+			"""Tenta carregar escala salva do banco. Retorna True se carregou, False se não encontrou."""
+			try:
+				data_iso = ddmmyyyy_to_yyyymmdd(data_ddmmyyyy)
+				if not data_iso:
+					return False
+				
+				print(f"[Carregar] Verificando se existe escala salva para {data_iso}")
+				
+				# Buscar escala salva no banco
+				rows = db.execute_query("SELECT escala FROM calendario WHERE data = ?", (data_iso,))
+				
+				if not rows or len(rows) == 0:
+					print(f"[Carregar] Nenhuma escala encontrada para {data_iso}")
+					return False
+				
+				escala_json = None
+				try:
+					row = rows[0]
+					escala_json = row['escala'] if 'escala' in row.keys() else row[0]
+				except:
+					row = rows[0]
+					escala_json = row[0]
+				
+				if not escala_json:
+					print(f"[Carregar] Coluna escala está vazia para {data_iso}")
+					return False
+				
+				print(f"[Carregar] Escala encontrada, tentando carregar JSON...")
+				
+				# Tentar fazer parse do JSON
+				import json
+				try:
+					dados_escala = json.loads(escala_json)
+					print(f"[Carregar] JSON válido encontrado, carregando escala...")
+				except json.JSONDecodeError as je:
+					print(f"[Carregar] JSON inválido: {je}")
+					return False
+				
+				# Limpar colunas antes de carregar
+				clear_all_columns()
+				
+				# Mapear status para tipos
+				status_para_tipo = {
+					"Plantão": "padrao",
+					"OBLL": "obll",
+					"Férias": "ferias", 
+					"Licença": "licencas",
+					"Ausência": "ausencias",
+					"Compensação": "compensacao",
+					"Permuta": "permuta",
+					"Extra diurno": "extra_diurno",
+					"Extra noturno": "extra_noturno"
+				}
+				
+				# Mapear nomes das colunas para chaves
+				col_name_to_key = {
+					"Acesso 01": "col1",
+					"Acesso 02": "col2",
+					"Acesso 03": "col3", 
+					"OBLL": "col4",
+					"Férias": "col5",
+					"Licenças": "col6",
+					"Ausências": "col7"
+				}
+				
+				# Carregar cada coluna
+				for col_name, policiais in dados_escala.items():
+					col_key = col_name_to_key.get(col_name)
+					if not col_key:
+						print(f"[Carregar] Coluna desconhecida: {col_name}")
+						continue
+					
+					print(f"[Carregar] Carregando {len(policiais)} policiais na coluna {col_name}")
+					
+					for pol_data in policiais:
+						nome = pol_data.get("nome", "DESCONHECIDO")
+						status = pol_data.get("status", "Plantão")
+						tipo = status_para_tipo.get(status, "padrao")
+						
+						# Criar dados do policial (simulando estrutura)
+						policial_info = {
+							"nome": nome,
+							"qra": nome,  # Usando nome como QRA por enquanto
+							"id": None,   # Não temos ID na escala salva
+							"tipo": tipo
+						}
+						
+						# Adicionar à coluna
+						col_items[col_key].append(make_draggable_policial(policial_info, tipo))
+						print(f"[Carregar] Adicionado {nome} ({status}) à coluna {col_name}")
+				
+				update_columns()
+				print(f"[Carregar] ✓ Escala carregada com sucesso para {data_iso}")
+				return True
+				
+			except Exception as ex:
+				print(f"[Carregar] Erro ao carregar escala: {ex}")
+				import traceback
+				traceback.print_exc()
+				return False
+
 		def refresh_tabela_para_data_atual():
 			if not equipe or not data.value or len(data.value) != 10:
 				return
+			
+			print("[Calendario] Refresh para data:", data.value, "equipe:", equipe)
+			
+			# PRIMEIRO: Tentar carregar escala salva
+			if carregar_escala_salva(data.value):
+				print("[Calendario] ✓ Escala salva carregada, não gerando nova distribuição")
+				try:
+					if self.page:
+						self.page.update()
+				except Exception:
+					pass
+				return
+			
+			# SE NÃO ENCONTROU ESCALA SALVA: Gerar nova distribuição
+			print("[Calendario] Nenhuma escala salva encontrada, gerando nova distribuição...")
+			
 			# Sempre começar limpando todas as colunas
 			clear_all_columns()
-			print("[Calendario] Refresh para data:", data.value, "equipe:", equipe)
 			pols = buscar_policiais_elegiveis(equipe, data.value)
 			print(f"[Calendario] Policiais elegíveis ({len(pols)}):", [p.get("qra") or p.get("nome") for p in pols])
 			distribuir_policiais(pols)
