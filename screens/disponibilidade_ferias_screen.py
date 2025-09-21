@@ -193,14 +193,24 @@ class DisponibilidadeFeriasScreen:
                     print("[Relatorio] Tabela vazia ou em formato inesperado.")
                     return
 
-                # Caminho do PDF (sempre em self.app.output_dir quando disponível)
-                base_dir = getattr(self.app, "output_dir", None)
+                # Caminho do PDF (prioriza roots.save_path; fallback: self.app.output_dir; por fim: cwd)
+                try:
+                    db_mgr = self.app.db if hasattr(self.app, 'db') else DatabaseManager()
+                except Exception:
+                    db_mgr = DatabaseManager()
+                base_dir = db_mgr.get_root_path("save_path")
                 if not base_dir or not os.path.isdir(base_dir):
-                    # fallback: diretório atual
+                    base_dir = getattr(self.app, "output_dir", None) if hasattr(self, 'app') else None
+                if not base_dir or not os.path.isdir(base_dir):
                     base_dir = os.getcwd()
                 pdf_filename = f"disponibilidade_ferias_{escala_letra}_{ano}.pdf"
                 pdf_path = os.path.join(base_dir, pdf_filename)
                 print(f"[Relatorio] Gerando PDF: {pdf_path}")
+                # Garante que diretório exista
+                try:
+                    os.makedirs(base_dir, exist_ok=True)
+                except Exception as _mk:
+                    print(f"[Relatorio] Aviso: não foi possível criar diretório '{base_dir}': {_mk}")
 
                 doc = SimpleDocTemplate(
                     pdf_path,

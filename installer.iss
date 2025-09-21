@@ -1,8 +1,8 @@
 ; ==== Inno Setup script para Nuvig (build sai em build\windows) ====
-#define MyAppName "Nuvig"
+#define MyAppName "Gestão Nuvig"
 #define MyAppVersion "1.0.0"
 #define MyAppPublisher "Rafael Costa"
-#define MyAppExeName "Nuvig.exe"   ; <-- troque para o nome real do seu .exe
+#define MyAppExeName "Gestao_Nuvig.exe"   ; <-- troque para o nome real do seu .exe
 #define BuildDir "build\\windows"  ; <-- pasta que o Flet gerou no seu caso
 
 [Setup]

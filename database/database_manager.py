@@ -1,6 +1,64 @@
 import sqlite3
 import os
+import sys
+from pathlib import Path
 from typing import Optional, List, Dict, Any
+
+# --- Utilidades de caminho para builds (Flet/Flutter, PyInstaller, cx_Freeze) ---
+def resource_path(relative_path: str) -> str:
+    """Retorna caminho absoluto a partir do executável/script, não do CWD.
+
+    Compatível com:
+    - Execução normal (Python)
+    - Apps frozen (PyInstaller/cx_Freeze) -> usa diretório do executável
+    """
+    try:
+        # PyInstaller expõe _MEIPASS
+        base_path = getattr(sys, "_MEIPASS")  # type: ignore[attr-defined]
+    except Exception:
+        base_path = None
+
+    if base_path:
+        base = Path(str(base_path))
+    else:
+        # Se congelado (cx_Freeze / PyInstaller), usar pasta do executável; senão, pasta deste arquivo
+        base = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
+
+    return str((base / relative_path).resolve())
+
+
+def resolve_db_path(custom_path: Optional[str] = None) -> str:
+    """Resolve o caminho absoluto do banco `nuvig.db`.
+
+    Regras:
+    - Se `custom_path` for absoluto e existir, usa-o.
+    - Se `custom_path` for relativo, resolve via resource_path().
+    - Caso não exista, tenta locais típicos de build Flet/Flutter.
+    """
+    # 1) Se informado um caminho pelo chamador
+    if custom_path:
+        p = Path(custom_path)
+        if not p.is_absolute():
+            p = Path(resource_path(custom_path))
+        if p.exists():
+            return str(p)
+
+    # 2) Candidatos padrão (ordem de preferência)
+    candidates = [
+        Path(resource_path(os.path.join("assets", "db", "nuvig.db"))),
+        # Estruturas comuns quando empacotado com Flet/Flutter
+        Path(resource_path(os.path.join("data", "flutter_assets", "assets", "db", "nuvig.db"))),
+        Path(resource_path(os.path.join("flutter_assets", "assets", "db", "nuvig.db"))),
+        # Fallback extremo (casos raros)
+        Path(resource_path(os.path.join("data", "flutter_assets", "nuvig.db"))),
+    ]
+
+    for c in candidates:
+        if c.exists():
+            return str(c)
+
+    # 3) Como último recurso, retorna o primeiro candidato (mesmo que não exista)
+    return str(candidates[0])
 
 class DatabaseManager:
     def get_equipe_by_data(self, data: str) -> Optional[str]:
@@ -47,19 +105,22 @@ class DatabaseManager:
             print(f"Erro ao atualizar policial: {e}")
             return False
     def __init__(self, db_path: str = "assets/db/nuvig.db"):
-        self.db_path = db_path
+        # Resolver caminho absoluto e robusto para o banco
+        self.db_path = resolve_db_path(db_path)
         self.connection: Optional[sqlite3.Connection] = None
         self.last_error: Optional[str] = None
         
     def init_database(self):
         """Inicializa o banco de dados e cria as tabelas necessárias"""
         try:
+            # Garantir que o caminho foi resolvido
+            self.db_path = resolve_db_path(self.db_path)
             self.connection = sqlite3.connect(self.db_path, check_same_thread=False)
             self.connection.row_factory = sqlite3.Row
             
             # Removido: self._create_tables() para não criar tabelas automaticamente
         # Removido: self._create_tables() para não criar tabelas automaticamente
-            print("Banco de dados inicializado com sucesso!")
+            print(f"Banco de dados inicializado com sucesso! DB: {self.db_path}")
             
         except sqlite3.Error as e:
             print(f"Erro ao inicializar banco de dados: {e}")
@@ -244,6 +305,42 @@ class DatabaseManager:
             VALUES (?, ?, ?, CURRENT_TIMESTAMP)
         """
         return self.execute_command(command, (config_key, config_value, description))
+
+    def get_root_path(self, name: str) -> Optional[str]:
+        """Obtém o caminho salvo na tabela roots para um determinado name.
+
+        Retorna None se não houver registro ou se o path for nulo/vazio.
+        """
+        try:
+            query = "SELECT path FROM roots WHERE name = ? LIMIT 1"
+            rows = self.execute_query(query, (name,))
+            if not rows:
+                return None
+            p = rows[0]["path"] if rows[0] else None
+            if not p:
+                return None
+            return str(p)
+        except Exception as e:
+            print(f"Erro ao obter root path '{name}': {e}")
+            return None
+
+    def set_root_path(self, name: str, path: str) -> bool:
+        """Define/atualiza o caminho absoluto na tabela roots para o name informado.
+
+        Caso o registro não exista, insere; caso exista, atualiza o path.
+        """
+        try:
+            abs_path = str(Path(path).expanduser().resolve())
+
+            # Verifica se já existe um registro para este name
+            exists = self.execute_query("SELECT 1 FROM roots WHERE name = ? LIMIT 1", (name,))
+            if exists:
+                return self.execute_command("UPDATE roots SET path = ? WHERE name = ?", (abs_path, name))
+            else:
+                return self.execute_command("INSERT INTO roots (name, path) VALUES (?, ?)", (name, abs_path))
+        except Exception as e:
+            print(f"Erro ao definir root path '{name}': {e}")
+            return False
 
     # --- Policiais ---
     def inserir_policial(self, nome: str, qra: str, matricula: str, escala: str, situacao: str, inicio: str, unidade: str) -> bool:
@@ -477,6 +574,68 @@ class DatabaseManager:
         if self.connection:
             self.connection.close()
             
-    def __del__(self):
-        """Destrutor para fechar conexão automaticamente"""
-        self.close_connection()
+    def get_google_credentials(self, credential_type):
+        """
+        Obtém as credenciais do Google Drive do banco de dados
+
+        Args:
+            credential_type (str): Tipo de credencial ('client_secrets' ou 'credentials')
+
+        Returns:
+            dict or None: Dados JSON das credenciais ou None se não encontrado
+        """
+        try:
+            query = "SELECT path FROM roots WHERE name = ?"
+            print(f"[DB][CRED] Buscando credenciais '{credential_type}' no banco...")
+            result = self.execute_query(query, (credential_type,))
+            raw = None
+            if result and result[0]:
+                raw = result[0][0]
+            if raw:
+                import json
+                print(f"[DB][CRED] Registro encontrado. Tamanho do texto: {len(raw)} bytes")
+                try:
+                    data = json.loads(raw)
+                    print(f"[DB][CRED] JSON carregado com sucesso. Chaves: {list(data.keys())}")
+                    return data
+                except Exception as je:
+                    print(f"[DB][CRED] Falha ao fazer json.loads do conteúdo: {je}")
+                    return None
+            else:
+                print(f"[DB][CRED] Nenhum registro encontrado para '{credential_type}'.")
+                return None
+        except Exception as e:
+            print(f"[DB][CRED] Erro ao obter credenciais {credential_type}: {e}")
+            return None
+
+    def set_google_credentials(self, credential_type, credentials_data):
+        """
+        Salva as credenciais do Google Drive no banco de dados
+
+        Args:
+            credential_type (str): Tipo de credencial ('client_secrets' ou 'credentials')
+            credentials_data (dict): Dados JSON das credenciais
+
+        Returns:
+            bool: True se sucesso, False se erro
+        """
+        try:
+            import json
+            json_data = json.dumps(credentials_data)
+            print(f"[DB][CRED] Salvando credenciais '{credential_type}' no banco. Tamanho: {len(json_data)} bytes")
+
+            # Usa UPSERT para evitar conflitos quando já existe a linha (mesmo com path vazio)
+            query = (
+                "INSERT INTO roots (name, path) VALUES (?, ?) "
+                "ON CONFLICT(name) DO UPDATE SET path=excluded.path"
+            )
+            params = (credential_type, json_data)
+            print(f"[DB][CRED] Executando UPSERT para '{credential_type}'.")
+
+            self.execute_command(query, params)
+            self.connection.commit()
+            print(f"[DB][CRED] Credenciais '{credential_type}' salvas/atualizadas com sucesso.")
+            return True
+        except Exception as e:
+            print(f"[DB][CRED] Erro ao salvar credenciais {credential_type}: {e}")
+            return False

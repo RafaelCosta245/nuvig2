@@ -4,6 +4,7 @@ import shutil
 from pydrive2.auth import GoogleAuth
 from pydrive2.drive import GoogleDrive
 from .base_screen import BaseScreen
+from utils.google_drive_utils import authenticate_google_drive, get_or_create_folder
 
 
 class ImportDBScreen(BaseScreen):
@@ -30,28 +31,7 @@ class ImportDBScreen(BaseScreen):
 
 		# ---- Autenticação com reutilização de credenciais ----
 		def autenticar_drive():
-			gauth = GoogleAuth()
-			caminho_client = os.path.join("assets", "json", "client_secrets.json")
-			caminho_credentials = os.path.join("assets", "json", "credentials.json")
-			if not os.path.exists(caminho_client):
-				raise FileNotFoundError(
-					f"Arquivo client_secrets.json não encontrado em: {caminho_client}. "
-					"Certifique-se de que o arquivo está no diretório 'assets/json/'."
-				)
-			gauth.LoadClientConfigFile(caminho_client)
-			if os.path.exists(caminho_credentials):
-				try:
-					gauth.LoadCredentialsFile(caminho_credentials)
-					if gauth.credentials is None or gauth.credentials.invalid:
-						gauth.LocalWebserverAuth()
-						gauth.SaveCredentialsFile(caminho_credentials)
-				except Exception:
-					gauth.LocalWebserverAuth()
-					gauth.SaveCredentialsFile(caminho_credentials)
-			else:
-				gauth.LocalWebserverAuth()
-				gauth.SaveCredentialsFile(caminho_credentials)
-			return GoogleDrive(gauth)
+			return authenticate_google_drive()
 
 		# ---- Buscar pasta no Google Drive ----
 		def get_folder_id(drive, nome_pasta, parent_id=None):

@@ -1,5 +1,6 @@
 import flet as ft
 from .base_screen import BaseScreen
+from database.database_manager import DatabaseManager
 from reportlab.lib.pagesizes import A4, landscape
 import datetime
 import json
@@ -225,14 +226,14 @@ class ConsultarAusenciasScreen(BaseScreen):
 
         def exportar_pdf(e):
             try:
-                # Ler o diretório de saída do arquivo de configuração
-                with open("assets/json/app_config.json", "r", encoding='utf-8') as f:
-                    config = json.load(f)
-                    output_dir = config.get("output_dir")
-                
-                if not output_dir:
-                    show_alert_dialog(e.control.page, "Diretório de saída não configurado!", success=False)
-                    return
+                # Determinar diretório de saída a partir do banco (roots.save_path) -> app.output_dir -> cwd
+                app_ref = getattr(self, 'app', None)
+                db_mgr = app_ref.db if (app_ref and hasattr(app_ref, 'db')) else DatabaseManager()
+                output_dir = db_mgr.get_root_path("save_path")
+                if not output_dir or not os.path.isdir(output_dir):
+                    output_dir = getattr(app_ref, 'output_dir', None) if app_ref else None
+                if not output_dir or not os.path.isdir(output_dir):
+                    output_dir = os.getcwd()
                 
                 if not self.tabela_rows:
                     show_alert_dialog(e.control.page, "Não há dados para exportar!", success=False)

@@ -105,27 +105,15 @@ class MainApp:
             # File picker para escolher diretório de saída (primeira execução)
             def _ensure_output_dir():
                 try:
-                    # 1) Preferir arquivo em assets/json/app_config.json
-                    config_path = Path(__file__).parent / "assets" / "json" / "app_config.json"
-                    existing = None
-                    if config_path.exists():
-                        try:
-                            with open(config_path, "r", encoding="utf-8") as f:
-                                cfg = json.load(f)
-                                existing = cfg.get("output_dir")
-                        except Exception as ex:
-                            print("[Init] Falha ao ler app_config.json:", ex)
-
-                    # 2) Fallback: system_config no banco
-                    if not existing:
-                        existing = self.db.get_system_config("output_dir")
+                    # 1) Buscar no banco (tabela roots, name='save_path')
+                    existing = self.db.get_root_path("save_path")
 
                     if existing and os.path.isdir(existing):
                         self.output_dir = existing
                         print(f"[Init] Diretório de saída: {self.output_dir}")
                         return
                 except Exception as ex:
-                    print("[Init] Falha ao ler output_dir:", ex)
+                    print(f"[Init] Falha ao ler output_dir: {ex}")
 
                 def on_pick_result(e: ft.FilePickerResultEvent):
                     try:
@@ -138,21 +126,13 @@ class MainApp:
                             page.snack_bar = ft.SnackBar(content=ft.Text(f"Pasta não selecionada. Usando padrão: {chosen}"))
                             page.snack_bar.open = True
                             page.update()
-                        self.output_dir = chosen
-                        # Persistir em JSON dentro de assets/json
-                        try:
-                            config_path = Path(__file__).parent / "assets" / "json"
-                            config_path.mkdir(parents=True, exist_ok=True)
-                            with open(config_path / "app_config.json", "w", encoding="utf-8") as f:
-                                json.dump({"output_dir": chosen}, f, ensure_ascii=False, indent=2)
-                        except Exception as exw:
-                            print("[Init] Erro ao escrever app_config.json:", exw)
-
-                        # Persistir também no banco (redundância)
-                        self.db.set_system_config("output_dir", chosen, "Diretório de saída para arquivos gerados")
-                        print(f"[Init] Diretório de saída definido: {chosen}")
+                        abs_path = str(Path(chosen).expanduser().resolve())
+                        self.output_dir = abs_path
+                        # Persistir no banco (tabela roots)
+                        self.db.set_root_path("save_path", abs_path)
+                        print(f"[Init] Diretório de saída definido: {abs_path}")
                     except Exception as ex2:
-                        print("[Init] Erro ao definir output_dir:", ex2)
+                        print(f"[Init] Erro ao definir output_dir: {ex2}")
 
                 picker = ft.FilePicker(on_result=on_pick_result)
                 page.overlay.append(picker)

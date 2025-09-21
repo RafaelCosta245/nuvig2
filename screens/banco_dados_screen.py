@@ -4,6 +4,8 @@ import datetime
 from pydrive2.auth import GoogleAuth
 from pydrive2.drive import GoogleDrive
 from .base_screen import BaseScreen
+from database.database_manager import DatabaseManager
+from utils.google_drive_utils import authenticate_google_drive, get_or_create_folder, upload_file_to_drive
 
 
 # ---- Função de alerta ----
@@ -20,92 +22,9 @@ def show_alert_dialog(page, mensagem, success=True):
 	page.open(dlg)
 
 
-# ---- Autenticação com reutilização de credenciais ----
-def autenticar_drive():
-	gauth = GoogleAuth()
-
-	# Caminho para o arquivo client_secrets.json
-	caminho_client = os.path.join("assets", "json", "client_secrets.json")
-
-	# Caminho para salvar/reutilizar credenciais
-	caminho_credentials = os.path.join("assets", "json", "credentials.json")
-
-	# Verifica se o arquivo client_secrets.json existe
-	if not os.path.exists(caminho_client):
-		raise FileNotFoundError(
-			f"Arquivo client_secrets.json não encontrado em: {caminho_client}. "
-			"Certifique-se de que o arquivo está no diretório 'assets/json/'."
-		)
-
-	# Configura o caminho do client_secrets.json
-	gauth.LoadClientConfigFile(caminho_client)
-
-	# Tenta carregar credenciais salvas
-	if os.path.exists(caminho_credentials):
-		try:
-			gauth.LoadCredentialsFile(caminho_credentials)
-			if gauth.credentials is None or gauth.credentials.invalid:
-				print("Credenciais salvas inválidas, iniciando nova autenticação...")
-				gauth.LocalWebserverAuth()
-				gauth.SaveCredentialsFile(caminho_credentials)
-			else:
-				print("Usando credenciais salvas.")
-		except Exception as e:
-			print(f"Erro ao carregar credenciais salvas: {str(e)}. Iniciando nova autenticação...")
-			gauth.LocalWebserverAuth()
-			gauth.SaveCredentialsFile(caminho_credentials)
-	else:
-		# Primeira autenticação: abre o navegador
-		print("Nenhuma credencial salva encontrada. Autenticando via navegador...")
-		gauth.LocalWebserverAuth()
-		gauth.SaveCredentialsFile(caminho_credentials)
-
-	return GoogleDrive(gauth)
-
-
-# ---- Buscar ou criar pasta no Google Drive ----
-def get_or_create_folder(drive, nome_pasta, parent_id=None):
-	# Buscar pasta existente pelo nome
-	query = f"title='{nome_pasta}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
-	if parent_id:
-		query += f" and '{parent_id}' in parents"
-
-	try:
-		folder_list = drive.ListFile({'q': query}).GetList()
-	except Exception as e:
-		raise Exception(f"Erro ao buscar pasta '{nome_pasta}': {str(e)}")
-
-	# Se a pasta já existe, retorna seu ID
-	if folder_list:
-		return folder_list[0]['id']
-
-	# Se não existe, cria a pasta
-	pasta = drive.CreateFile({
-		"title": nome_pasta,
-		"mimeType": "application/vnd.google-apps.folder",
-		"parents": [{"id": parent_id}] if parent_id else []
-	})
-	pasta.Upload()
-	return pasta["id"]
-
-
-# ---- Fazer upload do arquivo para a pasta ----
-def upload_arquivo(drive, file_path, folder_id):
-	if not os.path.exists(file_path):
-		raise FileNotFoundError(f"Arquivo não encontrado: {file_path}")
-
-	arquivo = drive.CreateFile({
-		"title": os.path.basename(file_path),
-		"parents": [{"id": folder_id}]
-	})
-	arquivo.SetContentFile(file_path)
-	arquivo.Upload()
-	print(f"✔ Arquivo {file_path} enviado para a pasta ID={folder_id}")
-
-
 # ---- Função principal de backup ----
 def backup_sqlite_para_drive(db_path, parent_folder_id=None):
-	drive = autenticar_drive()
+	drive = authenticate_google_drive()
 
 	# Buscar ou criar a pasta "NUVIG Backup"
 	nuvig_backup_id = get_or_create_folder(drive, "NUVIG Backup", parent_folder_id)
@@ -115,13 +34,16 @@ def backup_sqlite_para_drive(db_path, parent_folder_id=None):
 	pasta_id = get_or_create_folder(drive, pasta_nome, nuvig_backup_id)
 
 	# Envia o arquivo .db
-	upload_arquivo(drive, db_path, pasta_id)
+	upload_file_to_drive(drive, db_path, pasta_id)
 
 
 class BancoDadosScreen(BaseScreen):
 	def __init__(self, app_instance):
 		super().__init__(app_instance)
 		self.current_nav = "banco_dados"
+		# Consultar o caminho salvo na inicialização
+		self.db_manager = DatabaseManager()
+		self.current_save_path = self.db_manager.get_root_path("save_path") or ""
 
 	def get_content(self) -> ft.Control:
 		header = ft.Container(
@@ -223,10 +145,262 @@ class BancoDadosScreen(BaseScreen):
 				height=140
 			)
 
+		def change_path(e):
+			"""Função para alterar o caminho de salvamento dos PDFs"""
+			try:
+				# Obter a página do evento
+				page = getattr(e, "page", None)
+				if page is None and hasattr(e, "control") and hasattr(e.control, "page"):
+					page = e.control.page
+				if page is None:
+					page = self.page
+
+				if not page:
+					print("[Change Path] Erro: Não foi possível obter referência da página")
+					return
+
+				# Criar file picker para selecionar pasta
+				def folder_picker_result(e):
+					try:
+						if e.path and os.path.isdir(e.path):
+							# Atualizar no banco de dados
+							success = self.db_manager.set_root_path("save_path", e.path)
+
+							if success:
+								# Mostrar alerta de sucesso
+								show_alert_dialog(
+									page,
+									f"Caminho atualizado com sucesso!\n\nNovo caminho: {e.path}",
+									success=True
+								)
+
+								# Atualizar o valor local
+								self.current_save_path = e.path
+								saved_path.value = e.path
+								saved_path.update()
+
+								print(f"[Change Path] Caminho atualizado para: {e.path}")
+							else:
+								show_alert_dialog(
+									page,
+									"Erro ao salvar o novo caminho no banco de dados.",
+									success=False
+								)
+						else:
+							show_alert_dialog(
+								page,
+								"Caminho inválido selecionado.",
+								success=False
+							)
+					except Exception as ex:
+						print(f"[Change Path] Erro ao processar seleção: {ex}")
+						show_alert_dialog(
+							page,
+							f"Erro ao processar a seleção: {str(ex)}",
+							success=False
+						)
+
+				# Criar e configurar o file picker
+				picker = ft.FilePicker(on_result=folder_picker_result)
+				picker_dialog = ft.AlertDialog(
+					modal=True,
+					title=ft.Text("Selecionar Pasta de Salvamento", weight=ft.FontWeight.BOLD),
+					content=ft.Text("Escolha a pasta onde os arquivos PDF serão salvos:"),
+					actions=[
+						ft.TextButton("Selecionar Pasta", on_click=lambda e: picker.get_directory_path()),
+						ft.TextButton("Cancelar", on_click=lambda e: page.close(picker_dialog))
+					],
+					actions_alignment=ft.MainAxisAlignment.END
+				)
+
+				# Adicionar o picker ao overlay da página se ainda não estiver
+				if picker not in page.overlay:
+					page.overlay.append(picker)
+
+				# Abrir o dialog
+				page.open(picker_dialog)
+
+			except Exception as ex:
+				print(f"[Change Path] Erro: {ex}")
+				page = getattr(e, "page", None) or self.page
+				if page:
+					show_alert_dialog(
+						page,
+						f"Erro ao alterar caminho: {str(ex)}",
+						success=False
+					)
+
+
+		def logout_status(e=None):
+			"""Verifica status de login do Gmail e realiza login/logout conforme contexto.
+
+			Comportamento:
+			- Ao carregar a tela (chamada sem clique), verifica a coluna roots.credentials:
+			  - Se vazio/nulo: ajusta UI para 'desconectado'.
+			  - Se houver conteúdo: tenta autenticar e, se ok, ajusta UI para 'conectado'.
+			- Ao clicar no botão:
+			  - Se estiver conectado: faz logout (limpa roots.credentials) e ajusta UI para 'desconectado'.
+			  - Se estiver desconectado: faz login (authenticate_google_drive) e ajusta UI para 'conectado'.
+			"""
+			# Resolve page
+			page = getattr(e, "page", None)
+			if page is None and hasattr(e, "control") and hasattr(e.control, "page"):
+				page = e.control.page
+			if page is None:
+				page = self.page
+
+			# Lê valor cru da coluna path (roots.name='credentials')
+			try:
+				rows = self.db_manager.execute_query("SELECT path FROM roots WHERE name = ?", ("credentials",))
+				raw_path = None
+				if rows and rows[0]:
+					raw_path = rows[0][0]
+				print(f"[UI][AUTH] Valor atual em roots.credentials: {('vazio' if not raw_path else 'preenchido')}\n")
+			except Exception as ex:
+				print(f"[UI][AUTH] Erro ao consultar roots.credentials: {ex}")
+				raw_path = None
+
+			# Determina estado atual
+			is_connected = bool(raw_path and str(raw_path).strip() not in ("", "null", "None"))
+
+			# Se veio de clique no botão, alterna o estado
+			if e is not None and hasattr(e, "control"):
+				if is_connected:
+					# Logout: limpa credenciais no banco
+					try:
+						self.db_manager.execute_command("UPDATE roots SET path = NULL WHERE name = ?", ("credentials",))
+						self.db_manager.connection.commit()
+						print("[UI][AUTH] Logout realizado. Credenciais limpas no banco.")
+						is_connected = False
+					except Exception as ex:
+						print(f"[UI][AUTH] Erro ao realizar logout: {ex}")
+				else:
+					# Login: autentica e salva via utilitário central
+					try:
+						from utils.google_drive_utils import authenticate_google_drive
+						authenticate_google_drive()
+						print("[UI][AUTH] Login concluído e credenciais salvas no banco (via utilitário).")
+						is_connected = True
+					except Exception as ex:
+						print(f"[UI][AUTH] Erro ao realizar login: {ex}")
+						is_connected = False
+
+			# Atualiza UI conforme estado
+			if not is_connected:
+				text_login.content.value = "Gmail desconectado ❌"
+				btn_logout.text = "Login Gmail"
+				btn_logout.icon = ft.Icons.LOGIN
+			else:
+				# Quando conectado, garantir autenticação vigente em carregamento inicial
+				if e is None:
+					try:
+						from utils.google_drive_utils import authenticate_google_drive
+						authenticate_google_drive()
+					except Exception as ex:
+						print(f"[UI][AUTH] Erro ao validar sessão no carregamento: {ex}")
+				text_login.content.value = "Gmail conectado ✅"
+				btn_logout.text = "Logout Gmail"
+				btn_logout.icon = ft.Icons.LOGIN
+
+			# Refresca elementos somente se os controles já estiverem na página (evento de clique)
+			if e is not None:
+				try:
+					text_login.content.update()
+					text_login.update()
+					btn_logout.update()
+				except AssertionError as assert_ex:
+					print(f"[UI][AUTH] Ignorando update precoce: {assert_ex}")
+
+
+		text_path = ft.Container(
+					content=ft.Text(value="Pasta de relatórios:",
+									size=14,
+									weight=ft.FontWeight.BOLD,
+									color=ft.Colors.BLACK,
+									text_align=ft.TextAlign.CENTER),
+					# bgcolor=ft.Colors.LIGHT_GREEN,
+					width=250,
+					alignment=ft.alignment.center,
+					border_radius=4,
+					#border=ft.border.all(1, ft.Colors.BLACK45)
+				)
+
+		text_login = ft.Container(
+			content=ft.Text(value="Gmail desconectado ❌",
+							size=14,
+							weight=ft.FontWeight.BOLD,
+							color=ft.Colors.BLACK,
+							text_align=ft.TextAlign.CENTER),
+			# bgcolor=ft.Colors.LIGHT_GREEN,
+			width=250,
+			alignment=ft.alignment.center,
+			border_radius=4,
+			# border=ft.border.all(1, ft.Colors.BLACK45)
+		)
+
+		saved_path = ft.TextField(
+			width=600,
+			bgcolor=ft.Colors.WHITE,
+			disabled=True,
+			value=self.current_save_path  # Definir valor inicial consultado do banco
+		)
+
+		btn_change_path =ft.ElevatedButton(
+									text="Alterar Pasta",
+									icon=ft.Icons.CHANGE_CIRCLE,
+									color=ft.Colors.BLACK,
+									bgcolor=ft.Colors.WHITE,
+									style=ft.ButtonStyle(
+										shape=ft.RoundedRectangleBorder(radius=4),
+										side=ft.BorderSide(
+											width=1,
+											color=ft.Colors.BLACK
+										)
+									),
+									tooltip="Escolhe um novo diretório para salvar os arquivos",
+									width=150,
+									height=30,
+									on_click=change_path
+								)
+
+		# Botão de login/logout já definido abaixo como btn_logout
+
+		btn_logout = ft.ElevatedButton(
+			text="Logout Gmail",
+			icon=ft.Icons.LOGOUT,
+			color=ft.Colors.BLACK,
+			bgcolor=ft.Colors.WHITE,
+			style=ft.ButtonStyle(
+				shape=ft.RoundedRectangleBorder(radius=4),
+				side=ft.BorderSide(
+					width=1,
+					color=ft.Colors.BLACK
+				)
+			),
+			tooltip="Faz logout no usuário de Gmail registrado",
+			width=150,
+			height=30,
+			on_click=logout_status
+		)
+
+		load_container = ft.Container(height=70)
+
+		# Executa verificação inicial de status de login
+		logout_status(None)
+
 		return ft.Column([
 			header,
 			ft.Row([
 				card_backup_db(),
 				card_import_db(),
-			], spacing=20, alignment=ft.MainAxisAlignment.CENTER)
+			],
+				spacing=20, alignment=ft.MainAxisAlignment.CENTER),
+			load_container,
+			text_path,
+			saved_path,
+			btn_change_path,
+			ft.Container(height=20),
+			text_login,
+			btn_logout
+
 		], horizontal_alignment=ft.CrossAxisAlignment.CENTER)
