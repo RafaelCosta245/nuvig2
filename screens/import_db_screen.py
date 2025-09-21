@@ -17,6 +17,17 @@ class ImportDBScreen(BaseScreen):
 		current_page = None
 		cloud_list = ft.ListView(spacing=8, padding=10, height=300, width=500)
 
+		# Loader container para indicar processamento
+		load_container = ft.Container(width=50, height=50, alignment=ft.alignment.center)
+
+		def set_loading(is_loading: bool, page_ref: ft.Page | None = None):
+			try:
+				load_container.content = ft.ProgressRing() if is_loading else None
+				if page_ref is not None:
+					load_container.update()
+			except AssertionError as assert_ex:
+				print(f"[ImportDB][LOADER] Update precoce ignorado: {assert_ex}")
+
 		# Helper: alerta simples (sucesso/erro)
 		def show_alert_dialog(page: ft.Page, mensagem: str, success: bool = True):
 			dlg = ft.AlertDialog(
@@ -94,14 +105,20 @@ class ImportDBScreen(BaseScreen):
 				if not nuvig_backup_id:
 					cloud_list.controls.append(ft.Text("Pasta 'NUVIG Backup' não encontrada no Drive."))
 					page.update()
+					# Esconde loader somente após lista ser atualizada na tela
+					set_loading(False, page)
 					return
 				entries = list_backup_subfolders(drive, nuvig_backup_id)
 				if not entries:
 					cloud_list.controls.append(ft.Text("Nenhuma versão de backup encontrada."))
 					page.update()
+					# Esconde loader após atualizar lista vazia
+					set_loading(False, page)
 					return
 				def make_on_tap(entry):
 					def _handler(e):
+						# Mostra loader durante o download do arquivo selecionado
+						set_loading(True, page)
 						def do_import():
 							try:
 								dest_dir = os.path.join("assets", "db")
@@ -112,12 +129,14 @@ class ImportDBScreen(BaseScreen):
 								show_alert_dialog(page, "Banco de dados importado com sucesso da nuvem!", success=True)
 							except Exception as ex:
 								show_alert_dialog(page, f"Falha ao importar da nuvem: {ex}", success=False)
+							finally:
+								# Esconde loader após concluir o download
+								set_loading(False, page)
 						show_confirm_dialog(
 							page,
 							"Importar banco de dados?",
 							f"Você deseja importar o banco da pasta '{entry['folder_name']}'? Isso irá sobrescrever o arquivo local.",
 							on_yes=do_import,
-							on_no=lambda: None,
 						)
 					return _handler
 				for entry in entries:
@@ -130,8 +149,31 @@ class ImportDBScreen(BaseScreen):
 						)
 					)
 				page.update()
+				# Esconde loader somente após itens adicionados e UI atualizada
+				set_loading(False, page)
 			except Exception as ex:
 				show_alert_dialog(page, f"Erro ao buscar backups na nuvem: {ex}", success=False)
+
+		def import_cloud(e):
+			# Resolve a page e popula a lista de backups disponíveis
+			nonlocal current_page
+			page = getattr(e, "page", None)
+			if page is None and hasattr(e, "control") and hasattr(e.control, "page"):
+				page = e.control.page
+			if page is None:
+				page = self.page
+			else:
+				self.page = page
+			current_page = page
+			if page is None:
+				return
+			# Liga loader durante a busca na nuvem
+			set_loading(True, page)
+			try:
+				populate_cloud_list(page)
+			except Exception as ex:
+				print(f"[ImportDB] Erro ao popular lista da nuvem: {ex}")
+				set_loading(False, page)
 
 		header = ft.Container(
 			content=ft.Text(
@@ -220,7 +262,12 @@ class ImportDBScreen(BaseScreen):
 			current_page = page
 			if page is None:
 				return
-			populate_cloud_list(page)
+			# Liga loader durante a busca na nuvem
+			set_loading(True, page)
+			try:
+				populate_cloud_list(page)
+			except Exception as ex:
+				print(f"[ImportDB] Erro ao popular lista da nuvem: {ex}")
 
 		card_local = ft.Card(
 			content=ft.Container(
@@ -246,6 +293,8 @@ class ImportDBScreen(BaseScreen):
 			),
 		)
 
+		load_container = ft.Container(width=50, height=50, alignment=ft.alignment.center)
+
 		card_nuvem = ft.Card(
 			content=ft.Container(
 				content=ft.Column(
@@ -269,6 +318,15 @@ class ImportDBScreen(BaseScreen):
 			),
 		)
 
+		list_container = ft.Container(
+							width=400,
+							height=250,
+							content=cloud_list,
+							border=ft.border.all(1, ft.Colors.GREY),
+							bgcolor=ft.Colors.WHITE,
+							border_radius=12,
+		)
+
 		return ft.Column([
 			header,
 			ft.Row([
@@ -276,6 +334,7 @@ class ImportDBScreen(BaseScreen):
 				card_nuvem,
 			], spacing=20, alignment=ft.MainAxisAlignment.CENTER),
 			ft.Container(height=10),
+			load_container,
 			ft.Text("Backups encontrados na nuvem:", weight=ft.FontWeight.BOLD),
-			cloud_list,
+			list_container,
 		], horizontal_alignment=ft.CrossAxisAlignment.CENTER)
