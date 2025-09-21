@@ -324,7 +324,7 @@ class ImportDBScreen(BaseScreen):
 							content=cloud_list,
 							border=ft.border.all(1, ft.Colors.GREY),
 							bgcolor=ft.Colors.WHITE,
-							border_radius=11,
+							border_radius=12,
 		)
 
 		return ft.Column([
