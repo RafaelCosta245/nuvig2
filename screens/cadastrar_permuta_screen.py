@@ -52,6 +52,68 @@ class CadastrarPermutaScreen(BaseScreen):
                 equipe_permutado.value = ""
             e.control.page.update()
 
+        # Busca EXATA por QRA ou Nome para o SOLICITANTE
+        def buscar_por_qra_ou_nome_solicitante(e):
+            termo = policial_solicitante.value.strip()
+            if not termo:
+                e.control.page.update()
+                return
+            try:
+                query = (
+                    """
+                    SELECT id, nome, qra, matricula, escala
+                    FROM policiais
+                    WHERE unidade = 'NUVIG'
+                      AND (
+                            UPPER(qra) = UPPER(?)
+                         OR UPPER(nome) = UPPER(?)
+                          )
+                    LIMIT 1
+                    """
+                )
+                rows = self.app.db.execute_query(query, (termo, termo))
+                if rows:
+                    row = rows[0]
+                    matricula_solicitante.value = (row["matricula"] if "matricula" in row.keys() else matricula_solicitante.value) or matricula_solicitante.value
+                    policial_solicitante.value = (row["qra"] if "qra" in row.keys() else policial_solicitante.value) or policial_solicitante.value
+                    nome_solicitante.value = (row["nome"] if "nome" in row.keys() else nome_solicitante.value) or nome_solicitante.value
+                    escala = row["escala"] if "escala" in row.keys() else ""
+                    equipe_solicitante.value = escala[0] if escala else equipe_solicitante.value
+            except Exception as err:
+                print(f"[Permuta] Erro ao buscar solicitante por QRA/Nome: {err}")
+            e.control.page.update()
+
+        # Busca EXATA por QRA ou Nome para o PERMUTADO
+        def buscar_por_qra_ou_nome_permutado(e):
+            termo = policial_permutado.value.strip()
+            if not termo:
+                e.control.page.update()
+                return
+            try:
+                query = (
+                    """
+                    SELECT id, nome, qra, matricula, escala
+                    FROM policiais
+                    WHERE unidade = 'NUVIG'
+                      AND (
+                            UPPER(qra) = UPPER(?)
+                         OR UPPER(nome) = UPPER(?)
+                          )
+                    LIMIT 1
+                    """
+                )
+                rows = self.app.db.execute_query(query, (termo, termo))
+                if rows:
+                    row = rows[0]
+                    matricula_permutado.value = (row["matricula"] if "matricula" in row.keys() else matricula_permutado.value) or matricula_permutado.value
+                    policial_permutado.value = (row["qra"] if "qra" in row.keys() else policial_permutado.value) or policial_permutado.value
+                    nome_permutado.value = (row["nome"] if "nome" in row.keys() else nome_permutado.value) or nome_permutado.value
+                    escala = row["escala"] if "escala" in row.keys() else ""
+                    equipe_permutado.value = escala[0] if escala else equipe_permutado.value
+            except Exception as err:
+                print(f"[Permuta] Erro ao buscar permutado por QRA/Nome: {err}")
+            e.control.page.update()
+
         # Função para mostrar AlertDialog de erro de data
         def mostrar_erro_data(page):
             def fechar_dialogo(e):
@@ -241,13 +303,9 @@ class CadastrarPermutaScreen(BaseScreen):
             on_change=buscar_policial_solicitante
         )
         policial_solicitante = ft.TextField(
-            label="QRA Solicitante", 
-            width=200, 
-            read_only=True,
-            disabled=True,
-            bgcolor=ft.Colors.GREY_100,
-            border_color=ft.Colors.GREY_400,
-            text_style=ft.TextStyle(color=ft.Colors.GREY_700)
+            label="QRA Solicitante",
+            width=200,
+            read_only=False,
         )
         nome_solicitante = ft.TextField(
             label="Nome Solicitante", 
@@ -277,13 +335,9 @@ class CadastrarPermutaScreen(BaseScreen):
             on_change=buscar_policial_permutado
         )
         policial_permutado = ft.TextField(
-            label="QRA Permutado", 
-            width=200, 
-            read_only=True,
-            disabled=True,
-            bgcolor=ft.Colors.GREY_100,
-            border_color=ft.Colors.GREY_400,
-            text_style=ft.TextStyle(color=ft.Colors.GREY_700)
+            label="QRA Permutado",
+            width=200,
+            read_only=False,
         )
         nome_permutado = ft.TextField(
             label="Nome Permutado", 
@@ -335,6 +389,10 @@ class CadastrarPermutaScreen(BaseScreen):
         
         data1.on_change = mascara_data1
         data2.on_change = mascara_data2
+
+        # Ativar busca exata por QRA/Nome ao digitar nos campos
+        policial_solicitante.on_change = buscar_por_qra_ou_nome_solicitante
+        policial_permutado.on_change = buscar_por_qra_ou_nome_permutado
 
         import datetime
         

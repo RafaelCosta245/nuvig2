@@ -12,7 +12,7 @@ class CadastrarExtraScreen(BaseScreen):
 	def get_content(self) -> ft.Control:
 		# Campos do formulário
 		matricula = ft.TextField(label="Matrícula", width=200, max_length=8)
-		policial = ft.TextField(label="Policial", width=200, read_only=True)
+		policial = ft.TextField(label="Policial", width=200, read_only=False)
 		data = ft.TextField(label="Data", width=200, hint_text="dd/mm/aaaa")
 		operacao = ft.Dropdown(
 			label="Operação",
@@ -176,6 +176,45 @@ class CadastrarExtraScreen(BaseScreen):
 			e.control.page.update()
 
 		matricula.on_change = buscar_policial
+
+		# Nova função: buscar policial pelo nome (ou QRA) e preencher matrícula e demais campos
+		def buscar_policial_por_nome(e):
+			nome_busca = policial.value.strip()
+			if not nome_busca:
+				# Se limpou o campo de policial, não altera matrícula automaticamente
+				e.control.page.update()
+				return
+			try:
+				# Busca EXATA por QRA ou por NOME (sem LIKE). Case-insensitive, mas exigindo igualdade da string inteira.
+				query = (
+					"""
+					SELECT id, nome, qra, matricula
+					FROM policiais
+					WHERE unidade = 'NUVIG'
+					  AND (
+					        UPPER(qra) = UPPER(?)
+					     OR UPPER(nome) = UPPER(?)
+					      )
+					ORDER BY qra
+					LIMIT 1
+					"""
+				)
+				param = (nome_busca, nome_busca)
+				rows = self.app.db.execute_query(query, param)
+				if rows:
+					row = rows[0]
+					# Preenche matrícula e mantém o campo policial com o QRA (como já é usado hoje)
+					matricula.value = (row["matricula"] if "matricula" in row.keys() else "") or matricula.value
+					policial.value = (row["qra"] if "qra" in row.keys() else policial.value) or policial.value
+				else:
+					# Não encontrado: não apaga campos automaticamente
+					pass
+			except Exception as err:
+				print(f"[CadastrarExtra] Erro ao buscar por nome/QRA: {err}")
+			e.control.page.update()
+
+		# Permitir preencher pelo nome/QRA também
+		policial.on_change = buscar_policial_por_nome
 
 		# Função para lógica do dropdown operação
 		def on_operacao_change(e):

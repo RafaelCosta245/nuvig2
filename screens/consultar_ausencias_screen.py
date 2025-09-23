@@ -23,14 +23,16 @@ class ConsultarAusenciasScreen(BaseScreen):
 
         # Título e filtro (apenas matrícula)
         titulo = ft.Text(
-            "Consultar Ausências por Matrícula",
+            "Consultar Ausências por Matrícula ou QRA",
             size=20,
             weight=ft.FontWeight.BOLD,
             color=ft.Colors.BLACK,
             text_align=ft.TextAlign.CENTER,
         )
+        field_qra = ft.TextField(label="QRA", width=200)
         field_policial = ft.TextField(label="Matrícula", width=200)
-        filtros_row = ft.Row([field_policial], spacing=20, alignment=ft.MainAxisAlignment.CENTER)
+        filtros_row = ft.Row([field_qra, field_policial], spacing=20, alignment=ft.MainAxisAlignment.CENTER)
+
 
         # Controle para seleção única e cor de linha
         self.selected_row_index = None
@@ -102,15 +104,20 @@ class ConsultarAusenciasScreen(BaseScreen):
 
         def atualizar_tabela(_=None):
             matricula = field_policial.value.strip()
+            qra = field_qra.value.strip()
             tabela.rows.clear()
             self.tabela_rows.clear()
-            if not matricula:
+            if not matricula and not qra:
                 tabela.update()
                 return
 
             # Buscar policial
             db = self.app.db
-            self.res_pol = db.execute_query("SELECT id, nome, qra FROM policiais WHERE matricula = ?", (matricula,))
+            if matricula:
+                self.res_pol = db.execute_query("SELECT id, nome, qra FROM policiais WHERE matricula = ?", (matricula,))
+            elif qra:
+                self.res_pol = db.execute_query("SELECT id, nome, qra FROM policiais WHERE UPPER(qra) = UPPER(?)", (qra,))
+            
             if not self.res_pol:
                 tabela.update()
                 return
@@ -159,6 +166,7 @@ class ConsultarAusenciasScreen(BaseScreen):
             tabela.update()
 
         field_policial.on_change = atualizar_tabela
+        field_qra.on_change = atualizar_tabela
 
         # Função para apagar a licença selecionada
         def apagar_licenca(e):

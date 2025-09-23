@@ -29,6 +29,37 @@ class CadastrarAusenciasScreen(BaseScreen):
                 equipe.value = ""
             e.control.page.update()
 
+        # Busca EXATA por QRA/Nome ao digitar no campo 'policial'
+        def buscar_policial_por_qra_ou_nome(e):
+            termo = policial.value.strip()
+            if not termo:
+                e.control.page.update()
+                return
+            try:
+                query = (
+                    """
+                    SELECT id, nome, qra, matricula, escala
+                    FROM policiais
+                    WHERE unidade = 'NUVIG'
+                      AND (
+                            UPPER(qra) = UPPER(?)
+                         OR UPPER(nome) = UPPER(?)
+                          )
+                    LIMIT 1
+                    """
+                )
+                rows = self.app.db.execute_query(query, (termo, termo))
+                if rows:
+                    row = rows[0]
+                    matricula.value = (row["matricula"] if "matricula" in row.keys() else matricula.value) or matricula.value
+                    policial.value = (row["qra"] if "qra" in row.keys() else policial.value) or policial.value
+                    nome.value = (row["nome"] if "nome" in row.keys() else nome.value) or nome.value
+                    escala = row["escala"] if "escala" in row.keys() else ""
+                    equipe.value = escala[0] if escala else equipe.value
+            except Exception as err:
+                print(f"[Ausências] Erro ao buscar por QRA/Nome: {err}")
+            e.control.page.update()
+
         # Validadores simples
         def validar_ordem_datas(data_inicio, data_fim):
             if not data_inicio or not data_fim:
@@ -46,9 +77,7 @@ class CadastrarAusenciasScreen(BaseScreen):
 
         # Campos
         matricula = ft.TextField(label="Matrícula", width=200, max_length=8, on_change=buscar_policial)
-        policial = ft.TextField(label="QRA", width=200, read_only=True, disabled=True,
-                                bgcolor=ft.Colors.GREY_100, border_color=ft.Colors.GREY_400,
-                                text_style=ft.TextStyle(color=ft.Colors.GREY_700))
+        policial = ft.TextField(label="QRA", width=200, read_only=False)
         nome = ft.TextField(label="Nome", width=200, read_only=True, disabled=True,
                              bgcolor=ft.Colors.GREY_100, border_color=ft.Colors.GREY_400,
                              text_style=ft.TextStyle(color=ft.Colors.GREY_700))
@@ -133,6 +162,9 @@ class CadastrarAusenciasScreen(BaseScreen):
 
         data_inicio1.on_change = on_change_inicio
         data_fim1.on_change = on_change_fim
+
+        # Ativar busca exata por QRA/Nome ao digitar no campo 'policial'
+        policial.on_change = buscar_policial_por_qra_ou_nome
 
         # DatePickers (apenas período 1)
         datepicker_inicio1 = ft.DatePicker(first_date=datetime.datetime(2020, 1, 1), last_date=datetime.datetime(2030, 12, 31))

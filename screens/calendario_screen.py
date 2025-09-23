@@ -256,6 +256,8 @@ class CalendarioScreen(BaseScreen):
 							
 							if status == "Plantão":
 								plantao_list.append(nome)
+							elif status == "Compensação":
+								plantao_list.append(nome)  # Policiais de compensação também vão para plantão
 							elif status == "Extra diurno":
 								extras_diurna_list.append(nome)
 							elif status == "Extra noturno":
@@ -1342,14 +1344,14 @@ class CalendarioScreen(BaseScreen):
 			# Define cor baseada no tipo
 			cores = {
 				"padrao": ft.Colors.LIGHT_GREEN,  # Verde claro - adição padrão inicial
-				"obll": ft.Colors.YELLOW,  # Amarelo - OBLL
+				"obll": ft.Colors.INDIGO_200,  # Amarelo - OBLL
 				"ferias": ft.Colors.BLUE_GREY_300,  # Azul acinzentado - Férias
 				"licencas": ft.Colors.ORANGE,  # Laranja - Licenças
 				"ausencias": ft.Colors.WHITE,  # Branco - Ausências (não licenças)
 				"compensacao": ft.Colors.BROWN_200,  # Marrom claro - Compensações
 				"permuta": ft.Colors.GREY_400,  # Cinza - Permutas
 				"extra_diurno": ft.Colors.BLUE_200,  # Azul - Extra Diurno
-				"extra_noturno": ft.Colors.INDIGO_200,  # Índigo - Extra Noturno
+				"extra_noturno": ft.Colors.YELLOW,  # Índigo - Extra Noturno
 			}
 			bgcolor = cores.get(tipo, ft.Colors.LIGHT_GREEN)
 
@@ -2280,7 +2282,7 @@ class CalendarioScreen(BaseScreen):
 									weight=ft.FontWeight.BOLD,
 									color=ft.Colors.BLACK,
 									text_align=ft.TextAlign.CENTER),
-					bgcolor=ft.Colors.INDIGO_200,
+					bgcolor=ft.Colors.YELLOW,
 					width=120,
 					alignment=ft.alignment.center,
 					border_radius=4,

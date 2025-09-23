@@ -30,6 +30,39 @@ class CadastrarCompensacaoScreen(BaseScreen):
 				equipe.value = ""
 			e.control.page.update()
 
+		# Nova função: buscar por QRA ou Nome (EXATO) e preencher matrícula, nome e equipe
+		def buscar_policial_por_qra_ou_nome(e):
+			termo = policial.value.strip()
+			if not termo:
+				# Não altera automaticamente se o campo for limpo
+				e.control.page.update()
+				return
+			try:
+				query = (
+					"""
+					SELECT id, nome, qra, matricula, escala
+					FROM policiais
+					WHERE unidade = 'NUVIG'
+					  AND (
+					        UPPER(qra) = UPPER(?)
+					     OR UPPER(nome) = UPPER(?)
+					      )
+					LIMIT 1
+					"""
+				)
+				rows = self.app.db.execute_query(query, (termo, termo))
+				if rows:
+					row = rows[0]
+					# Preenche matrícula, QRA (policial), nome e equipe (1ª letra da escala)
+					matricula.value = (row["matricula"] if "matricula" in row.keys() else matricula.value) or matricula.value
+					policial.value = (row["qra"] if "qra" in row.keys() else policial.value) or policial.value
+					nome.value = (row["nome"] if "nome" in row.keys() else nome.value) or nome.value
+					escala = row["escala"] if "escala" in row.keys() else ""
+					equipe.value = escala[0] if escala else equipe.value
+			except Exception as err:
+				print(f"[CadastrarCompensacao] Erro ao buscar por QRA/Nome: {err}")
+			e.control.page.update()
+
 		# Função para mostrar AlertDialog de erro de data
 		def mostrar_erro_data(page):
 			def fechar_dialogo(e):
@@ -210,31 +243,21 @@ class CadastrarCompensacaoScreen(BaseScreen):
 			on_change=buscar_policial
 		)
 		policial = ft.TextField(
-			label="QRA", 
-			width=200, 
-			read_only=True,
-			disabled=True,
-			bgcolor=ft.Colors.GREY_100,
-			border_color=ft.Colors.GREY_400,
-			text_style=ft.TextStyle(color=ft.Colors.GREY_700)
+			label="QRA",
+			width=200,
+			read_only=False,
 		)
 		nome = ft.TextField(
 			label="Nome", 
 			width=200, 
 			read_only=True,
 			disabled=True,
-			bgcolor=ft.Colors.GREY_100,
-			border_color=ft.Colors.GREY_400,
-			text_style=ft.TextStyle(color=ft.Colors.GREY_700)
 		)
 		equipe = ft.TextField(
 			label="Equipe", 
 			width=200, 
 			read_only=True,
 			disabled=True,
-			bgcolor=ft.Colors.GREY_100,
-			border_color=ft.Colors.GREY_400,
-			text_style=ft.TextStyle(color=ft.Colors.GREY_700)
 		)
 		data1 = ft.TextField(label="Compensação", width=200, hint_text="dd/mm/aaaa")
 		data2 = ft.TextField(label="A compensar", width=200, hint_text="dd/mm/aaaa")
@@ -266,6 +289,9 @@ class CadastrarCompensacaoScreen(BaseScreen):
 		
 		data1.on_change = mascara_data1
 		data2.on_change = mascara_data2
+
+		# Habilitar busca por QRA/Nome ao digitar no campo 'policial'
+		policial.on_change = buscar_policial_por_qra_ou_nome
 
 		import datetime
 		

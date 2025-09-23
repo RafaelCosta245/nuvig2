@@ -14,6 +14,26 @@ class ConsultarPermutasScreen(BaseScreen):
         titulo = ft.Text("Pesquisar Permutas Cadastradas", size=20,
                          weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK, text_align=ft.TextAlign.CENTER)
 
+        txt_pesq_qra_solicitante = ft.TextButton(
+            "QRA Solicitante:",
+            style=ft.ButtonStyle(
+                color=ft.Colors.BLACK,
+                text_style=ft.TextStyle(size=12)
+            )
+        )
+        field_qra_solicitante = ft.TextField(label="QRA Solicitante", width=200)
+        col_qra_solicitante = ft.Column([txt_pesq_qra_solicitante, field_qra_solicitante], spacing=8, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
+
+        txt_pesq_qra_permutado = ft.TextButton(
+            "QRA Permutado:",
+            style=ft.ButtonStyle(
+                color=ft.Colors.BLACK,
+                text_style=ft.TextStyle(size=12)
+            )
+        )
+        field_qra_permutado = ft.TextField(label="QRA Permutado", width=200)
+        col_qra_permutado = ft.Column([txt_pesq_qra_permutado, field_qra_permutado], spacing=8, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
+
         txt_pesq_policial_solicitante = ft.TextButton(
             "Pesquise pela matrícula do solicitante:",
             style=ft.ButtonStyle(
@@ -60,6 +80,8 @@ class ConsultarPermutasScreen(BaseScreen):
         col_data_permuta = ft.Column([txt_pesq_data_permuta, field_data_permuta], spacing=8, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
 
         filtros_row = ft.Row([
+            col_qra_solicitante,
+            col_qra_permutado,
             col_policial_solicitante,
             col_policial_permutado,
             col_data_permuta
@@ -125,6 +147,8 @@ class ConsultarPermutasScreen(BaseScreen):
             db_manager = self.app.db
             matricula_solicitante_val = field_policial_solicitante.value.strip()
             matricula_permutado_val = field_policial_permutado.value.strip()
+            qra_solicitante_val = field_qra_solicitante.value.strip()
+            qra_permutado_val = field_qra_permutado.value.strip()
             data_permuta_val = field_data_permuta.value.strip()
             
             policial_solicitante_id = None
@@ -147,6 +171,16 @@ class ConsultarPermutasScreen(BaseScreen):
                     filtros.append("solicitante = ?")
                     params.append(policial_solicitante_id)
 
+            if qra_solicitante_val:
+                query_policial_qra = "SELECT id, nome, matricula FROM policiais WHERE UPPER(qra) = UPPER(?)"
+                result_policial_qra = db_manager.execute_query(query_policial_qra, (qra_solicitante_val,))
+                if result_policial_qra:
+                    policial_solicitante_id = result_policial_qra[0]["id"] if hasattr(result_policial_qra[0], "keys") else result_policial_qra[0][0]
+                    policial_solicitante_nome = result_policial_qra[0]["nome"] if hasattr(result_policial_qra[0], "keys") else result_policial_qra[0][1]
+                    policial_solicitante_matricula = result_policial_qra[0]["matricula"] if hasattr(result_policial_qra[0], "keys") else result_policial_qra[0][2]
+                    filtros.append("solicitante = ?")
+                    params.append(policial_solicitante_id)
+
             if matricula_permutado_val:
                 query_policial = "SELECT id, nome, matricula FROM policiais WHERE matricula = ?"
                 result_policial = db_manager.execute_query(query_policial, (matricula_permutado_val,))
@@ -154,6 +188,16 @@ class ConsultarPermutasScreen(BaseScreen):
                     policial_permutado_id = result_policial[0]["id"] if hasattr(result_policial[0], "keys") else result_policial[0][0]
                     policial_permutado_nome = result_policial[0]["nome"] if hasattr(result_policial[0], "keys") else result_policial[0][1]
                     policial_permutado_matricula = result_policial[0]["matricula"] if hasattr(result_policial[0], "keys") else result_policial[0][2]
+                    filtros.append("permutado = ?")
+                    params.append(policial_permutado_id)
+
+            if qra_permutado_val:
+                query_policial_qra = "SELECT id, nome, matricula FROM policiais WHERE UPPER(qra) = UPPER(?)"
+                result_policial_qra = db_manager.execute_query(query_policial_qra, (qra_permutado_val,))
+                if result_policial_qra:
+                    policial_permutado_id = result_policial_qra[0]["id"] if hasattr(result_policial_qra[0], "keys") else result_policial_qra[0][0]
+                    policial_permutado_nome = result_policial_qra[0]["nome"] if hasattr(result_policial_qra[0], "keys") else result_policial_qra[0][1]
+                    policial_permutado_matricula = result_policial_qra[0]["matricula"] if hasattr(result_policial_qra[0], "keys") else result_policial_qra[0][2]
                     filtros.append("permutado = ?")
                     params.append(policial_permutado_id)
 
@@ -227,6 +271,8 @@ class ConsultarPermutasScreen(BaseScreen):
 
         field_policial_solicitante.on_change = atualizar_tabela
         field_policial_permutado.on_change = atualizar_tabela
+        field_qra_solicitante.on_change = atualizar_tabela
+        field_qra_permutado.on_change = atualizar_tabela
         
         # Função combinada para aplicar máscara e atualizar tabela
         def mascara_e_atualizar(e):

@@ -31,6 +31,37 @@ class CadastrarFeriasScreen(BaseScreen):
                 equipe.value = ""
             e.control.page.update()
 
+        # Busca EXATA por QRA ou Nome ao digitar no campo 'policial'
+        def buscar_policial_por_qra_ou_nome(e):
+            termo = policial.value.strip()
+            if not termo:
+                e.control.page.update()
+                return
+            try:
+                query = (
+                    """
+                    SELECT id, nome, qra, matricula, escala
+                    FROM policiais
+                    WHERE unidade = 'NUVIG'
+                      AND (
+                            UPPER(qra) = UPPER(?)
+                         OR UPPER(nome) = UPPER(?)
+                          )
+                    LIMIT 1
+                    """
+                )
+                rows = self.app.db.execute_query(query, (termo, termo))
+                if rows:
+                    row = rows[0]
+                    matricula.value = (row["matricula"] if "matricula" in row.keys() else matricula.value) or matricula.value
+                    policial.value = (row["qra"] if "qra" in row.keys() else policial.value) or policial.value
+                    nome.value = (row["nome"] if "nome" in row.keys() else nome.value) or nome.value
+                    escala = row["escala"] if "escala" in row.keys() else ""
+                    equipe.value = escala[0] if escala else equipe.value
+            except Exception as err:
+                print(f"[Férias] Erro ao buscar por QRA/Nome: {err}")
+            e.control.page.update()
+
         # Função para calcular dias entre duas datas
         def calcular_dias(data_inicio, data_fim):
             if not data_inicio or not data_fim:
@@ -338,13 +369,9 @@ class CadastrarFeriasScreen(BaseScreen):
             on_change=buscar_policial
         )
         policial = ft.TextField(
-            label="QRA", 
-            width=200, 
-            read_only=True,
-            disabled=True,
-            bgcolor=ft.Colors.GREY_100,
-            border_color=ft.Colors.GREY_400,
-            text_style=ft.TextStyle(color=ft.Colors.GREY_700)
+            label="QRA",
+            width=200,
+            read_only=False,
         )
         nome = ft.TextField(
             label="Nome", 
@@ -713,7 +740,8 @@ class CadastrarFeriasScreen(BaseScreen):
         btn_fim2.disabled = True
         btn_fim3.disabled = True
 
-
+        # Habilitar busca por QRA/Nome ao digitar no campo 'policial'
+        policial.on_change = buscar_policial_por_qra_ou_nome
 
 
 

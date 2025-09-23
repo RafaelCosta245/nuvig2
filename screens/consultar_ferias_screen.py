@@ -14,6 +14,16 @@ class ConsultarFeriasScreen(BaseScreen):
         titulo = ft.Text("Pesquisar Férias Cadastradas", size=20,
                          weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK, text_align=ft.TextAlign.CENTER)
 
+        txt_pesq_qra = ft.TextButton(
+            "Pesquise pelo QRA:",
+            style=ft.ButtonStyle(
+                color=ft.Colors.BLACK,
+                text_style=ft.TextStyle(size=12)
+            )
+        )
+        field_qra = ft.TextField(label="QRA", width=200)
+        col_qra = ft.Column([txt_pesq_qra, field_qra], spacing=8, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
+
         txt_pesq_policial = ft.TextButton(
             "Pesquise pela matrícula:",
             style=ft.ButtonStyle(
@@ -61,6 +71,7 @@ class ConsultarFeriasScreen(BaseScreen):
         col_data = ft.Column([txt_pesq_data, field_data], spacing=8, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
 
         filtros_row = ft.Row([
+            col_qra,
             col_policial,
             col_periodo,
             col_data
@@ -248,6 +259,7 @@ class ConsultarFeriasScreen(BaseScreen):
         def atualizar_tabela(_=None):
             db_manager = self.app.db
             matricula_val = field_policial.value.strip()
+            qra_val = field_qra.value.strip()
             periodo_val = field_periodo.value.strip()
             data_val = field_data.value.strip()
             policial_id = None
@@ -263,6 +275,16 @@ class ConsultarFeriasScreen(BaseScreen):
                     policial_id = result_policial[0]["id"] if hasattr(result_policial[0], "keys") else result_policial[0][0]
                     policial_nome = result_policial[0]["nome"] if hasattr(result_policial[0], "keys") else result_policial[0][1]
                     policial_matricula = result_policial[0]["matricula"] if hasattr(result_policial[0], "keys") else result_policial[0][2]
+                    filtros.append("policial_id = ?")
+                    params.append(policial_id)
+
+            if qra_val:
+                query_policial_qra = "SELECT id, nome, matricula FROM policiais WHERE UPPER(qra) = UPPER(?)"
+                result_policial_qra = db_manager.execute_query(query_policial_qra, (qra_val,))
+                if result_policial_qra:
+                    policial_id = result_policial_qra[0]["id"] if hasattr(result_policial_qra[0], "keys") else result_policial_qra[0][0]
+                    policial_nome = result_policial_qra[0]["nome"] if hasattr(result_policial_qra[0], "keys") else result_policial_qra[0][1]
+                    policial_matricula = result_policial_qra[0]["matricula"] if hasattr(result_policial_qra[0], "keys") else result_policial_qra[0][2]
                     filtros.append("policial_id = ?")
                     params.append(policial_id)
 
@@ -414,6 +436,7 @@ class ConsultarFeriasScreen(BaseScreen):
             tabela.update()
 
         field_policial.on_change = atualizar_tabela
+        field_qra.on_change = atualizar_tabela
         field_periodo.on_change = atualizar_tabela
         
         # Função combinada para aplicar máscara e atualizar tabela
