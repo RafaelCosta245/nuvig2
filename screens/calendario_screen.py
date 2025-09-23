@@ -1487,30 +1487,42 @@ class CalendarioScreen(BaseScreen):
 				data_sel = parse_iso(data_iso)
 				if not data_sel:
 					return
-				print(f"[Férias] Verificando férias para data {data_iso} ({data_sel})")
-				# Constrói conjunto de ids em férias
-				ferias_ids = set()
-				# Consultar todos os registros de férias dos policiais que estão nas colunas de acesso
-				# Coleta pids das colunas 1..3
-				pids = []
-				for key in ["col1", "col2", "col3"]:
-					for it in col_items[key]:
-						pid = id_map.get(getattr(it, "data", ""), {}).get("id")
-						if pid:
-							pids.append(pid)
-				print("[Férias] PIDs nas colunas de acesso:", pids)
-				# Para eficiência, consulta férias de todos pids de uma vez (IN)
-				if not pids:
+
+				# IMPORTANTE: Para efeito de Férias, considerar a escala do policial como apenas a primeira letra
+				# Ou seja, se escala = "ABC", para férias ele pertence à equipe "A" durante todo o período.
+				equipe_atual = (equipe or "").strip().upper()
+				if not equipe_atual:
+					print("[Férias] Sem equipe definida para a data; nada a aplicar.")
 					return
+
+				print(f"[Férias] Verificando férias para data {data_iso} ({data_sel}) considerando equipe '{equipe_atual}' pela 1ª letra da escala")
+
+				# Buscar todos os policiais NUVIG cuja primeira letra da escala == equipe do dia
+				rows_pol = db.execute_query(
+					"""
+					SELECT id, nome, qra
+					FROM policiais
+					WHERE unidade = 'NUVIG'
+					  AND IFNULL(escala, '') <> ''
+					  AND UPPER(SUBSTR(escala, 1, 1)) = ?
+					""",
+					(equipe_atual,)
+				)
+				pids = [r["id"] for r in rows_pol if "id" in r.keys()]
+				print("[Férias] PIDs com 1ª letra da escala na equipe do dia:", pids)
+				if not pids:
+					update_columns()
+					return
+
+				# Consultar férias dos pids identificados
 				placeholders = ",".join(["?"] * len(pids))
 				rows = db.execute_query(
 					f"SELECT policial_id, inicio1, fim1, inicio2, fim2, inicio3, fim3 FROM ferias WHERE policial_id IN ({placeholders})",
 					tuple(pids),
 				)
 				print(f"[Férias] Registros ferias por policial_id: {len(rows)}")
-				# Fallback: se não houver registros por policia_id, tentar por matricula
+				# Fallback: algumas bases usam matrícula na tabela ferias
 				if not rows:
-					# Buscar matriculas dos pids
 					mrows = db.execute_query(
 						f"SELECT id, matricula FROM policiais WHERE id IN ({placeholders})",
 						tuple(pids),
@@ -1519,7 +1531,6 @@ class CalendarioScreen(BaseScreen):
 					print("[Férias] Tentando fallback por matrícula:", matriculas)
 					if matriculas:
 						ph2 = ",".join(["?"] * len(matriculas))
-						# Algumas bases usam coluna 'matricula' em ferias
 						rows = db.execute_query(
 							f"SELECT matricula as policial_id, inicio1, fim1, inicio2, fim2, inicio3, fim3 FROM ferias WHERE matricula IN ({ph2})",
 							tuple(matriculas),
@@ -1544,30 +1555,56 @@ class CalendarioScreen(BaseScreen):
 						return False
 					return di <= sel <= df
 
+				# Identificar ids de policiais em férias hoje
+				ferias_ids = set()
 				for r in rows:
 					pid = rg(r, "policial_id")
 					if in_range(data_sel, rg(r, "inicio1"), rg(r, "fim1")) or \
-							in_range(data_sel, rg(r, "inicio2"), rg(r, "fim2")) or \
-							in_range(data_sel, rg(r, "inicio3"), rg(r, "fim3")):
+					   in_range(data_sel, rg(r, "inicio2"), rg(r, "fim2")) or \
+					   in_range(data_sel, rg(r, "inicio3"), rg(r, "fim3")):
 						ferias_ids.add(pid)
-						print(f"[Férias] Policial em férias na data {data_iso}: pid={pid}, ranges=", rg(r, "inicio1"),
-							  rg(r, "fim1"), rg(r, "inicio2"), rg(r, "fim2"), rg(r, "inicio3"), rg(r, "fim3"))
-				# Move itens dos acessos para col5 (Férias)
+						print(f"[Férias] Policial em férias na data {data_iso}: pid={pid}")
+
+				# Conjunto de ids já presentes na coluna Férias para evitar duplicidades
+				exist_ferias_ids = set()
+				for it in col_items["col5"]:
+					pid_exist = id_map.get(getattr(it, "data", ""), {}).get("id")
+					if pid_exist:
+						exist_ferias_ids.add(pid_exist)
+
+				# 1) Remover dos acessos e mover para Férias quando necessário
 				if ferias_ids:
 					print("[Férias] Movendo para coluna Férias ids:", ferias_ids)
 					for key in ["col1", "col2", "col3"]:
 						rem = []
 						for it in col_items[key]:
-							pid = id_map.get(getattr(it, "data", ""), {}).get("id")
-							if pid in ferias_ids:
-								# cria novo draggable para a coluna férias baseado nos dados do id_map
+							pid_it = id_map.get(getattr(it, "data", ""), {}).get("id")
+							if pid_it in ferias_ids:
 								pinfo = id_map.get(getattr(it, "data", ""), {})
 								print(f"[Férias] Removendo de {key} e adicionando em Férias:", pinfo)
 								col_items["col5"].append(make_draggable_policial(pinfo, "ferias"))
+								exist_ferias_ids.add(pid_it)
 								rem.append(it)
-						# remove os marcados
 						for it in rem:
 							col_items[key].remove(it)
+
+				# 2) Garantir que todos em ferias_ids apareçam na coluna Férias, mesmo se não estavam nos acessos
+				faltantes = [pid for pid in ferias_ids if pid not in exist_ferias_ids]
+				if faltantes:
+					print("[Férias] Adicionando faltantes diretamente na coluna Férias:", faltantes)
+					ph3 = ",".join(["?"] * len(faltantes))
+					rows_falt = db.execute_query(
+						f"SELECT id, nome, qra FROM policiais WHERE id IN ({ph3})",
+						tuple(faltantes),
+					)
+					for row in rows_falt:
+						pol_data = {
+							"id": row["id"] if "id" in row.keys() else None,
+							"nome": row["nome"] if "nome" in row.keys() else None,
+							"qra": row["qra"] if "qra" in row.keys() else None,
+						}
+						col_items["col5"].append(make_draggable_policial(pol_data, "ferias"))
+
 				update_columns()
 			except Exception as ex:
 				print("[Férias] Erro ao aplicar férias:", ex)
