@@ -308,6 +308,9 @@ class BancoDadosScreen(BaseScreen):
                         self.db_manager.connection.commit()
                         print("[UI][AUTH] Logout realizado. Credenciais limpas no banco.")
                         is_connected = False
+                        # Notifica o MainApp sobre o logout
+                        if hasattr(self, 'app') and hasattr(self.app, 'logout'):
+                            self.app.logout()
                     except Exception as ex:
                         print(f"[UI][AUTH] Erro ao realizar logout: {ex}")
                 else:
@@ -317,6 +320,9 @@ class BancoDadosScreen(BaseScreen):
                         authenticate_google_drive()
                         print("[UI][AUTH] Login concluído e credenciais salvas no banco (via utilitário).")
                         is_connected = True
+                        # Notifica o MainApp sobre login bem-sucedido
+                        if hasattr(self, 'app') and hasattr(self.app, 'set_authenticated'):
+                            self.app.set_authenticated(True)
                     except Exception as ex:
                         print(f"[UI][AUTH] Erro ao realizar login: {ex}")
                         is_connected = False

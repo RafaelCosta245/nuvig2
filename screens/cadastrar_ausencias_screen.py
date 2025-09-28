@@ -7,6 +7,10 @@ class CadastrarAusenciasScreen(BaseScreen):
     def __init__(self, app_instance):
         super().__init__(app_instance)
         self.current_nav = "cadastrar_ausencia"
+        # Flags de controle para evitar loops e definir precedência de entrada
+        self._updating = False
+        self._prefer_dias = False  # True quando usuário digitou dias; False quando usuário ajusta datas
+        self._editing_dias = False
 
     def get_content(self) -> ft.Control:
         # Buscar policial por matrícula (reutiliza a mesma lógica de férias)
@@ -103,7 +107,7 @@ class CadastrarAusenciasScreen(BaseScreen):
             ]
         )
 
-        dias = ft.Text(size=20, weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK, text_align=ft.TextAlign.CENTER)
+        dias = ft.TextField(label="Dias", width=120, text_align=ft.TextAlign.CENTER, hint_text="nº de dias")
 
         data_inicio1 = ft.TextField(label="Data Início", width=200, hint_text="dd/mm/aaaa")
         data_fim1 = ft.TextField(label="Data Fim", width=200, hint_text="dd/mm/aaaa")
@@ -135,33 +139,89 @@ class CadastrarAusenciasScreen(BaseScreen):
             except Exception:
                 return None
 
-        def atualizar_qtd_dias():
+        def mask_int(field):
+            valor = ''.join(c for c in field.value if c.isdigit())
+            field.value = valor
+
+        def atualizar_qtd_dias(force: bool = False):
             try:
+                if self._updating:
+                    return
                 d1 = _parse_ddmmyyyy_or_iso(data_inicio1.value)
                 d2 = _parse_ddmmyyyy_or_iso(data_fim1.value)
-                if d1 and d2:
+                # Só recalcular e escrever no campo dias se não estivermos editando o campo
+                # e a precedência atual não for "dias", a menos que force=True
+                if (force or (not self._editing_dias and not self._prefer_dias)) and d1 and d2:
                     qnt = (d2 - d1).days + 1
-                    if qnt > 0:
-                        dias.value = f"{qnt} dias"
-                    else:
-                        dias.value = ""
-                else:
-                    dias.value = ""
+                    dias.value = f"{qnt}" if qnt > 0 else ""
             except Exception:
                 dias.value = ""
 
         def on_change_inicio(e):
             mask_date(data_inicio1)
-            atualizar_qtd_dias()
+            try:
+                if self._updating:
+                    return
+                d1 = _parse_ddmmyyyy_or_iso(data_inicio1.value)
+                num_dias = int(dias.value) if dias.value and dias.value.isdigit() else None
+                if d1 and num_dias and num_dias > 0 and self._prefer_dias:
+                    self._updating = True
+                    novo_fim = d1 + datetime.timedelta(days=num_dias - 1)
+                    data_fim1.value = novo_fim.strftime("%d/%m/%Y")
+                    self._updating = False
+                else:
+                    atualizar_qtd_dias()
+            except Exception:
+                atualizar_qtd_dias()
             e.control.page.update()
 
         def on_change_fim(e):
             mask_date(data_fim1)
+            # Usuário deu preferência às datas
+            self._prefer_dias = False
             atualizar_qtd_dias()
+            e.control.page.update()
+
+        def on_change_dias(e):
+            mask_int(dias)
+            # Usuário está priorizando o campo dias enquanto houver valor numérico
+            self._prefer_dias = True if dias.value and dias.value.isdigit() else False
+            try:
+                if self._updating:
+                    return
+                d1 = _parse_ddmmyyyy_or_iso(data_inicio1.value)
+                num_dias = int(dias.value) if dias.value and dias.value.isdigit() else None
+                if d1 and num_dias and num_dias > 0:
+                    self._updating = True
+                    novo_fim = d1 + datetime.timedelta(days=num_dias - 1)
+                    data_fim1.value = novo_fim.strftime("%d/%m/%Y")
+                    self._updating = False
+                # Se o usuário apagar dias, não reescreva imediatamente; deixe as datas prevalecerem no próximo evento
+            except Exception:
+                pass
             e.control.page.update()
 
         data_inicio1.on_change = on_change_inicio
         data_fim1.on_change = on_change_fim
+        dias.on_change = on_change_dias
+        # Controlar foco do campo dias para evitar sobrescritas indesejadas
+        def on_focus_dias(e):
+            self._editing_dias = True
+        def on_blur_dias(e):
+            self._editing_dias = False
+            # Ao sair do campo, se há início e dias válidos, garantir fim coerente
+            try:
+                d1 = _parse_ddmmyyyy_or_iso(data_inicio1.value)
+                num_dias = int(dias.value) if dias.value and dias.value.isdigit() else None
+                if d1 and num_dias and num_dias > 0:
+                    self._updating = True
+                    novo_fim = d1 + datetime.timedelta(days=num_dias - 1)
+                    data_fim1.value = novo_fim.strftime("%d/%m/%Y")
+                    self._updating = False
+            except Exception:
+                pass
+        dias.on_focus = on_focus_dias
+        dias.on_blur = on_blur_dias
 
         # Ativar busca exata por QRA/Nome ao digitar no campo 'policial'
         policial.on_change = buscar_policial_por_qra_ou_nome
@@ -175,7 +235,17 @@ class CadastrarAusenciasScreen(BaseScreen):
                 data_inicio1.value = datepicker_inicio1.value.strftime("%d/%m/%Y")
                 if not validar_ordem_datas(data_inicio1.value, data_fim1.value):
                     data_inicio1.value = ""
-                atualizar_qtd_dias()
+                # Se dias preenchido, atualizar fim; senão, recalcular dias
+                try:
+                    d1 = _parse_ddmmyyyy_or_iso(data_inicio1.value)
+                    num_dias = int(dias.value) if dias.value and dias.value.isdigit() else None
+                    if d1 and num_dias and num_dias > 0 and self._prefer_dias:
+                        novo_fim = d1 + datetime.timedelta(days=num_dias - 1)
+                        data_fim1.value = novo_fim.strftime("%d/%m/%Y")
+                    else:
+                        atualizar_qtd_dias()
+                except Exception:
+                    atualizar_qtd_dias()
                 e.control.page.update()
 
         def on_fim1_change(e):
@@ -183,6 +253,8 @@ class CadastrarAusenciasScreen(BaseScreen):
                 data_fim1.value = datepicker_fim1.value.strftime("%d/%m/%Y")
                 if not validar_ordem_datas(data_inicio1.value, data_fim1.value):
                     data_fim1.value = ""
+                # Preferência para datas ao escolher no datepicker
+                self._prefer_dias = False
                 atualizar_qtd_dias()
                 e.control.page.update()
 
@@ -228,6 +300,13 @@ class CadastrarAusenciasScreen(BaseScreen):
                 if not matricula.value.strip():
                     mostrar_erro_data(e.control.page, "Matrícula é obrigatória!")
                     return
+                # Se fim estiver vazio mas dias preenchido e início válido, calcular fim automaticamente
+                if data_inicio1.value.strip() and not data_fim1.value.strip() and dias.value.strip().isdigit():
+                    d1 = _parse_ddmmyyyy_or_iso(data_inicio1.value.strip())
+                    num_dias = int(dias.value.strip())
+                    if d1 and num_dias > 0:
+                        novo_fim = d1 + datetime.timedelta(days=num_dias - 1)
+                        data_fim1.value = novo_fim.strftime("%d/%m/%Y")
                 if not data_inicio1.value.strip() or not data_fim1.value.strip():
                     mostrar_erro_data(e.control.page, "Informe início e fim da ausência.")
                     return
@@ -258,7 +337,7 @@ class CadastrarAusenciasScreen(BaseScreen):
                     show_alert_dialog(e.control.page, "Período inválido (quantidade de dias <= 0)", success=False)
                     return
                 # refletir na UI
-                dias.value = f"{qnt} dias"
+                dias.value = f"{qnt}"
                 try:
                     dias.update()
                 except Exception:

@@ -1,5 +1,6 @@
 import flet as ft
 from screens.home_screen import HomeScreen
+from screens.login_screen import LoginScreen
 from screens.calendario_screen import CalendarioScreen
 from screens.cadastro_screen import CadastroScreen
 from screens.cadastro_policial_screen import CadastroPolicialScreen
@@ -25,10 +26,17 @@ from screens.banco_dados_screen import BancoDadosScreen
 from screens.import_db_screen import ImportDBScreen
 from database.database_manager import DatabaseManager
 from pathlib import Path
-import os, sys, shutil, traceback, json
+import os, sys, shutil, traceback, json, threading, time
 
 APP_NAME = "Nuvig"
 DB_NAME  = "nuvig.db"
+
+# ==========================
+# Configuração de AUTO-LOGOUT
+# Ative/desative aqui e ajuste o horário (formato 24h HH:MM)
+AUTO_LOGOUT_ENABLED = True
+AUTO_LOGOUT_TIME = "22:12"  # EX.: "21:30" para 21h30
+# ==========================
 
 def _app_root() -> Path:
     # build (exe) => pasta do executável; dev => pasta do main.py
@@ -78,6 +86,115 @@ class MainApp:
         self.db = DatabaseManager(db_path=str(Path(__file__).parent / "assets" / "db" / "nuvig.db"))
         self.current_screen = None
         self.output_dir: str | None = None
+        self.is_authenticated = False  # Estado global de autenticação
+        self.navbar = None  # Referência para atualizar navbar
+        # Controle do auto-logout
+        self._auto_logout_triggered: bool = False
+        self._auto_logout_last_date = None  # type: ignore
+        self._auto_logout_timer = None  # não usado com thread, mantido por compatibilidade
+        self._auto_logout_thread = None
+        
+    def set_authenticated(self, authenticated: bool):
+        """Define o estado de autenticação e atualiza a navbar"""
+        self.is_authenticated = authenticated
+        if self.navbar:
+            self.navbar.update_auth_state(authenticated)
+            
+    def logout(self):
+        """Realiza logout e volta para tela de login"""
+        self.set_authenticated(False)
+        # Navegar para login
+        if hasattr(self, '_navigate_to_func'):
+            self._navigate_to_func("login")
+
+    def _hard_restart(self):
+        """Tenta reiniciar o aplicativo (processo Python). Se falhar, faz logout simples."""
+        try:
+            py = sys.executable
+            import subprocess
+            # Inicia um novo processo e encerra o atual
+            subprocess.Popen([py, *sys.argv])
+            os._exit(0)
+        except Exception as ex:
+            print(f"[AutoLogout] Hard restart falhou: {ex}. Fazendo logout simples.")
+            self.logout()
+
+    def _check_auto_logout(self):
+        """Verifica horário configurado e realiza logout automático uma vez por dia."""
+        try:
+            from datetime import datetime, date, time as dt_time
+            now = datetime.now()
+            print(f"[AutoLogout][Check] now={now.strftime('%Y-%m-%d %H:%M:%S')} (local time)")
+            # Reset diário do gatilho
+            if self._auto_logout_last_date != now.date():
+                self._auto_logout_last_date = now.date()
+                self._auto_logout_triggered = False
+                print("[AutoLogout][Check] Reset diário aplicado: _auto_logout_triggered=False")
+
+            if self._auto_logout_triggered:
+                return
+
+            try:
+                hh, mm = map(int, AUTO_LOGOUT_TIME.split(":"))
+            except Exception:
+                print(f"[AutoLogout] Horário inválido em AUTO_LOGOUT_TIME='{AUTO_LOGOUT_TIME}'. Use HH:MM")
+                return
+
+            target = now.replace(hour=hh, minute=mm, second=0, microsecond=0)
+            print(f"[AutoLogout][Check] target={target.strftime('%Y-%m-%d %H:%M:%S')} | triggered={self._auto_logout_triggered}")
+            # Se a hora já passou no dia e ainda não disparou, dispara imediatamente
+            if now >= target and not self._auto_logout_triggered:
+                print(f"[AutoLogout] Horário atingido ({AUTO_LOGOUT_TIME}). Executando auto-logout...")
+                # 1) Limpa credenciais do banco para forçar re-login
+                try:
+                    self.db.execute_command("UPDATE roots SET path = NULL WHERE name = ?", ("credentials",))
+                    print("[AutoLogout] Credenciais limpas do banco com sucesso.")
+                except Exception as dbex:
+                    print(f"[AutoLogout] Falha ao limpar credenciais: {dbex}")
+
+                # 2) Agendar ação de UI de logout no thread principal
+                def _ui_action():
+                    try:
+                        print("[AutoLogout][UI] Executando logout e snackbar na UI thread...")
+                        self.logout()
+                        self.page.snack_bar = ft.SnackBar(
+                            content=ft.Text("Sessão encerrada automaticamente pelo sistema."),
+                            bgcolor=ft.Colors.ORANGE,
+                        )
+                        self.page.snack_bar.open = True
+                        self.page.update()
+                    except Exception as uiex:
+                        print(f"[AutoLogout][UI] Erro durante UI logout: {uiex}")
+
+                try:
+                    if hasattr(self, 'page') and hasattr(self.page, 'invoke_later'):
+                        self.page.invoke_later(_ui_action)
+                    else:
+                        # Fallback: executa direto (pode funcionar dependendo do ambiente)
+                        _ui_action()
+                except Exception as invex:
+                    print(f"[AutoLogout] Falha ao agendar ação de UI: {invex}")
+                self._auto_logout_triggered = True
+            else:
+                print("[AutoLogout][Check] Condições não atendidas para logout automático neste tick.")
+        except Exception as ex:
+            print(f"[AutoLogout] Erro no verificador: {ex}")
+
+    def _start_auto_logout_thread(self):
+        if self._auto_logout_thread is not None:
+            return
+        print("[AutoLogout] Iniciando thread de monitoramento (intervalo=5s)...")
+        def _worker():
+            while True:
+                try:
+                    print(f"[AutoLogout][Tick-Thread] {__import__('datetime').datetime.now().strftime('%Y-%m-%d %H:%M:%S')} verificando...")
+                    self._check_auto_logout()
+                except Exception as ex:
+                    print(f"[AutoLogout][Thread] Erro: {ex}")
+                time.sleep(5)
+        t = threading.Thread(target=_worker, name="AutoLogoutThread", daemon=True)
+        t.start()
+        self._auto_logout_thread = t
         
     def main(self, page: ft.Page):
         try:
@@ -101,6 +218,14 @@ class MainApp:
 
             # Inicializar banco de dados
             self.db.init_database()
+            # Limpar credenciais salvas a cada inicialização para exigir login manual
+            try:
+                self.db.execute_command("UPDATE roots SET path = NULL WHERE name = ?", ("credentials",))
+                # Resetar estado de autenticação
+                self.set_authenticated(False)
+                print("[Init] Credenciais do Google limpas no início da aplicação.")
+            except Exception as ex:
+                print(f"[Init] Falha ao limpar credenciais no início: {ex}")
 
             # File picker para escolher diretório de saída (primeira execução)
             def _ensure_output_dir():
@@ -143,6 +268,7 @@ class MainApp:
 
             # Dicionário de telas
             self.screens = {
+                "login": LoginScreen(self),
                 "home": HomeScreen(self),
                 "calendario": CalendarioScreen(self),
                 "cadastro": CadastroScreen(self),
@@ -177,6 +303,19 @@ class MainApp:
 
             # Função para navegar entre telas
             def navigate_to(screen_name: str):
+                # Gate de autenticação: somente permite sair da tela de login se autenticado
+                if screen_name != "login" and not self.is_authenticated:
+                    page.snack_bar = ft.SnackBar(
+                        content=ft.Text("Você precisa fazer login para acessar o sistema."),
+                        bgcolor=ft.Colors.ORANGE,
+                    )
+                    page.snack_bar.open = True
+                    # Garante que a tela de login permaneça ativa
+                    self.current_screen = self.screens["login"]
+                    content_container.content = self.current_screen.get_content()
+                    page.update()
+                    return
+
                 if screen_name in self.screens:
                     # Atualizar a tela atual
                     self.current_screen = self.screens[screen_name]
@@ -191,6 +330,9 @@ class MainApp:
                     page.snack_bar.open = True
                     page.update()
 
+            # Armazenar referência do navigate_to para uso em logout
+            self._navigate_to_func = navigate_to
+            
             # Configurar navegação para cada tela
             for screen in self.screens.values():
                 screen.set_navigation_callback(navigate_to)
@@ -198,15 +340,16 @@ class MainApp:
             # Layout principal com navbar fixa
             from screens.navbar import NavBar
 
-            navbar = NavBar(
+            self.navbar = NavBar(
                 on_nav=navigate_to,
-                selected_nav=None
+                selected_nav=None,
+                authenticated=self.is_authenticated  # Inicialmente desabilitada
             )
 
             # Layout principal
             main_layout = ft.Column(
                 controls=[
-                    navbar,  # Navbar fixa
+                    self.navbar,  # Navbar fixa
                     ft.Divider(height=1, color=ft.Colors.GREY),
                     content_container  # Container para conteúdo dinâmico
                 ],
@@ -217,8 +360,12 @@ class MainApp:
             # Adicionar o layout principal à página
             page.add(main_layout)
 
-            # Iniciar com a tela home
-            navigate_to("home")
+            # Iniciar monitor de auto-logout (somente se habilitado) via thread
+            if AUTO_LOGOUT_ENABLED:
+                self._start_auto_logout_thread()
+
+            # Iniciar com a tela de login
+            navigate_to("login")
 
         except Exception as e:
             page.add(

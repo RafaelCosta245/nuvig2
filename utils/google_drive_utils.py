@@ -117,6 +117,91 @@ def authenticate_google_drive():
     return GoogleDrive(gauth)
 
 
+def is_drive_authenticated() -> bool:
+    """
+    Verifica de forma SILENCIOSA (sem abrir navegador) se há autenticação válida do Google Drive.
+
+    Regras:
+    - Lê client_secrets e credentials do banco.
+    - Se houver credentials, tenta reconstruir e fazer refresh do token quando aplicável.
+    - Faz uma chamada simples ao Drive para confirmar validade (por ex., ListFile com limite mínimo).
+    - NÃO abre navegador; se precisar de consentimento, retorna False.
+
+    Returns:
+        bool: True se credenciais válidas e acesso ao Drive confirmados; False caso contrário.
+    """
+    try:
+        db_manager = DatabaseManager()
+
+        client_secrets = db_manager.get_google_credentials('client_secrets')
+        credentials = db_manager.get_google_credentials('credentials')
+        if not client_secrets or not credentials:
+            print("[GD][CHECK] client_secrets ou credentials ausentes no banco.")
+            return False
+
+        gauth = GoogleAuth()
+        try:
+            gauth.settings["get_refresh_token"] = True
+            gauth.settings["save_credentials"] = False
+            gauth.settings["oauth_scope"] = ["https://www.googleapis.com/auth/drive"]
+        except Exception:
+            pass
+
+        import tempfile, json, os as _os
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False, encoding='utf-8') as tmp_cs:
+            json.dump(client_secrets, tmp_cs)
+            tmp_cs_path = tmp_cs.name
+        try:
+            gauth.LoadClientConfigFile(tmp_cs_path)
+        finally:
+            try:
+                _os.unlink(tmp_cs_path)
+            except Exception:
+                pass
+
+        try:
+            cred_json_str = json.dumps(credentials)
+            gauth.credentials = OAuth2Credentials.from_json(cred_json_str)
+        except Exception as e:
+            print(f"[GD][CHECK] Falha ao reconstruir credenciais: {e}")
+            return False
+
+        # Se expirado e com refresh_token, tenta refresh silencioso
+        try:
+            if getattr(gauth.credentials, 'access_token_expired', False):
+                if getattr(gauth.credentials, 'refresh_token', None):
+                    print("[GD][CHECK] Token expirado. Tentando refresh silencioso...")
+                    try:
+                        gauth.Refresh()
+                    except Exception as rex:
+                        print(f"[GD][CHECK] Refresh falhou: {rex}")
+                        return False
+                else:
+                    print("[GD][CHECK] Token expirado e sem refresh_token. Necessário reautenticar.")
+                    return False
+        except Exception as e:
+            print(f"[GD][CHECK] Erro ao avaliar/atualizar token: {e}")
+            return False
+
+        # Se marcado inválido, não prossegue
+        if getattr(gauth.credentials, 'invalid', True):
+            print("[GD][CHECK] Credenciais inválidas.")
+            return False
+
+        # Checagem efetiva no Drive (chamada simples)
+        try:
+            drive = GoogleDrive(gauth)
+            # Consulta simples. Se falhar por 401/403, revogação será percebida aqui.
+            _ = drive.ListFile({'q': "trashed=false"}).GetList()
+            return True
+        except Exception as e:
+            print(f"[GD][CHECK] Chamada ao Drive falhou (provável revogação/sem permissão): {e}")
+            return False
+
+    except Exception as outer:
+        print(f"[GD][CHECK] Erro inesperado: {outer}")
+        return False
+
 def get_or_create_folder(drive, nome_pasta, parent_id=None):
     """
     Busca ou cria pasta no Google Drive

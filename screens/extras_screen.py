@@ -72,7 +72,7 @@ class ExtrasScreen(BaseScreen):
                 content=ft.Column(
                     controls=[
                         ft.Text("📊 Relatórios", size=18, weight=ft.FontWeight.BOLD),
-                        ft.Text("Relatórios das Extas", size=12, color=ft.Colors.GREY),
+                        ft.Text("Relatórios das Extras", size=12, color=ft.Colors.GREY),
                         ft.Container(height=10),
                         ft.TextButton(
                             text="Abrir",
@@ -115,13 +115,38 @@ class ExtrasScreen(BaseScreen):
                 height=140
             )
 
+        def card_disponibilidade() -> ft.Control:
+            return ft.Container(
+                content=ft.Column(
+                    controls=[
+                        ft.Text("✅ Disponibilidade", size=18, weight=ft.FontWeight.BOLD),
+                        ft.Text("Datas disponíveis para Extras", size=12, color=ft.Colors.GREY),
+                        ft.Container(height=10),
+                        ft.TextButton(
+                            text="Abrir",
+                            icon=ft.Icons.ARROW_FORWARD,
+                            on_click=lambda e: self.navigate_to("disponibilidade_ferias"),
+                        ),
+                    ],
+                    horizontal_alignment=ft.CrossAxisAlignment.START,
+                    spacing=5,
+                ),
+                padding=ft.padding.all(8),
+                border=ft.border.all(1, ft.Colors.GREY),
+                border_radius=12,
+                bgcolor=ft.Colors.WHITE,
+                width=300,
+                height=140
+            )
+
         return ft.Column([
             header,
             ft.Row([
                 card_cadastrar_extra(),
                 card_consultar_extras(),
                 card_relatorios(),
-                card_cadastro_horas()
+                card_cadastro_horas(),
+                card_disponibilidade()
             ], spacing=20, alignment=ft.MainAxisAlignment.CENTER)
         ], horizontal_alignment=ft.CrossAxisAlignment.CENTER)
 
