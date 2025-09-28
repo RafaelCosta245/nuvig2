@@ -22,6 +22,7 @@ from screens.consultar_ausencias_screen import ConsultarAusenciasScreen
 from screens.cadastrar_extra_screen import CadastrarExtraScreen
 from screens.consultar_extras_screen import ConsultarExtrasScreen
 from screens.disponibilidade_ferias_screen import DisponibilidadeFeriasScreen
+from screens.disponibilidade_extras_screen import DisponibilidadeExtrasScreen
 from screens.banco_dados_screen import BancoDadosScreen
 from screens.import_db_screen import ImportDBScreen
 from database.database_manager import DatabaseManager
@@ -34,8 +35,8 @@ DB_NAME  = "nuvig.db"
 # ==========================
 # Configuração de AUTO-LOGOUT
 # Ative/desative aqui e ajuste o horário (formato 24h HH:MM)
-AUTO_LOGOUT_ENABLED = True
-AUTO_LOGOUT_TIME = "22:12"  # EX.: "21:30" para 21h30
+AUTO_LOGOUT_ENABLED = False
+AUTO_LOGOUT_TIME = "22:30"  # EX.: "21:30" para 21h30
 # ==========================
 
 def _app_root() -> Path:
@@ -116,7 +117,7 @@ class MainApp:
             subprocess.Popen([py, *sys.argv])
             os._exit(0)
         except Exception as ex:
-            print(f"[AutoLogout] Hard restart falhou: {ex}. Fazendo logout simples.")
+            #print(f"[AutoLogout] Hard restart falhou: {ex}. Fazendo logout simples.")
             self.logout()
 
     def _check_auto_logout(self):
@@ -124,12 +125,12 @@ class MainApp:
         try:
             from datetime import datetime, date, time as dt_time
             now = datetime.now()
-            print(f"[AutoLogout][Check] now={now.strftime('%Y-%m-%d %H:%M:%S')} (local time)")
+            #print(f"[AutoLogout][Check] now={now.strftime('%Y-%m-%d %H:%M:%S')} (local time)")
             # Reset diário do gatilho
             if self._auto_logout_last_date != now.date():
                 self._auto_logout_last_date = now.date()
                 self._auto_logout_triggered = False
-                print("[AutoLogout][Check] Reset diário aplicado: _auto_logout_triggered=False")
+                #print("[AutoLogout][Check] Reset diário aplicado: _auto_logout_triggered=False")
 
             if self._auto_logout_triggered:
                 return
@@ -137,18 +138,18 @@ class MainApp:
             try:
                 hh, mm = map(int, AUTO_LOGOUT_TIME.split(":"))
             except Exception:
-                print(f"[AutoLogout] Horário inválido em AUTO_LOGOUT_TIME='{AUTO_LOGOUT_TIME}'. Use HH:MM")
+                #print(f"[AutoLogout] Horário inválido em AUTO_LOGOUT_TIME='{AUTO_LOGOUT_TIME}'. Use HH:MM")
                 return
 
             target = now.replace(hour=hh, minute=mm, second=0, microsecond=0)
-            print(f"[AutoLogout][Check] target={target.strftime('%Y-%m-%d %H:%M:%S')} | triggered={self._auto_logout_triggered}")
+            #print(f"[AutoLogout][Check] target={target.strftime('%Y-%m-%d %H:%M:%S')} | triggered={self._auto_logout_triggered}")
             # Se a hora já passou no dia e ainda não disparou, dispara imediatamente
             if now >= target and not self._auto_logout_triggered:
-                print(f"[AutoLogout] Horário atingido ({AUTO_LOGOUT_TIME}). Executando auto-logout...")
+                #print(f"[AutoLogout] Horário atingido ({AUTO_LOGOUT_TIME}). Executando auto-logout...")
                 # 1) Limpa credenciais do banco para forçar re-login
                 try:
                     self.db.execute_command("UPDATE roots SET path = NULL WHERE name = ?", ("credentials",))
-                    print("[AutoLogout] Credenciais limpas do banco com sucesso.")
+                    #print("[AutoLogout] Credenciais limpas do banco com sucesso.")
                 except Exception as dbex:
                     print(f"[AutoLogout] Falha ao limpar credenciais: {dbex}")
 
@@ -289,6 +290,7 @@ class MainApp:
                 "cadastrar_extra": CadastrarExtraScreen(self),
                 "consultar_extras": ConsultarExtrasScreen(self),
                 "disponibilidade_ferias": DisponibilidadeFeriasScreen(self),
+                "disponibilidade_extras": DisponibilidadeExtrasScreen(self),
                 "cadastrar_ausencia": CadastrarAusenciasScreen(self),
                 "consultar_ausencias": ConsultarAusenciasScreen(self),
                 "banco_dados": BancoDadosScreen(self),

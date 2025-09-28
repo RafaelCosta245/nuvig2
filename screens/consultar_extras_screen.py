@@ -21,7 +21,7 @@ class ConsultarExtrasScreen(BaseScreen):
                 text_style=ft.TextStyle(size=12)
             )
         )
-        field_qra = ft.TextField(label="QRA", width=200)
+        field_qra = ft.TextField(label="QRA", width=200, bgcolor=ft.Colors.WHITE)
         col_qra = ft.Column([txt_pesq_qra, field_qra], spacing=8, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
 
         txt_pesq_policial = ft.TextButton(
@@ -31,7 +31,7 @@ class ConsultarExtrasScreen(BaseScreen):
                 text_style=ft.TextStyle(size=12)
             )
         )
-        field_policial = ft.TextField(label="Matrícula", width=200)
+        field_policial = ft.TextField(label="Matrícula", width=200, bgcolor=ft.Colors.WHITE)
         col_policial = ft.Column([txt_pesq_policial, field_policial], spacing=8,
                                  horizontal_alignment=ft.CrossAxisAlignment.CENTER)
 
@@ -43,7 +43,7 @@ class ConsultarExtrasScreen(BaseScreen):
             ),
             on_click=lambda e: print("pesquisa por data")
         )
-        field_data = ft.TextField(label="Data", width=200, hint_text="dd/mm/aaaa")
+        field_data = ft.TextField(label="Data", width=200, hint_text="dd/mm/aaaa", bgcolor=ft.Colors.WHITE)
         
         # Função para aplicar máscara de data
         def mascara_data(e):
@@ -87,7 +87,7 @@ class ConsultarExtrasScreen(BaseScreen):
         except Exception as e:
             interticio_nome = ""
 
-        field_interticio = ft.TextField(label="Intertício", width=200, value=interticio_nome)
+        field_interticio = ft.TextField(label="Intertício", width=200, value=interticio_nome, bgcolor=ft.Colors.WHITE)
         col_interticio = ft.Column([txt_pesq_interticio, field_interticio], spacing=8, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
 
         filtros_row = ft.Row([

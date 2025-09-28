@@ -237,30 +237,34 @@ class CadastrarCompensacaoScreen(BaseScreen):
 
 		# Campos do formulário
 		matricula = ft.TextField(
-			label="Matrícula", 
+			label="Matrícula",
+			bgcolor=ft.Colors.WHITE,
 			width=200, 
 			input_filter=ft.NumbersOnlyInputFilter(), 
 			on_change=buscar_policial
 		)
 		policial = ft.TextField(
 			label="QRA",
+			bgcolor=ft.Colors.WHITE,
 			width=200,
 			read_only=False,
 		)
 		nome = ft.TextField(
-			label="Nome", 
+			label="Nome",
+			bgcolor=ft.Colors.WHITE,
 			width=200, 
 			read_only=True,
 			disabled=True,
 		)
 		equipe = ft.TextField(
-			label="Equipe", 
+			label="Equipe",
+			bgcolor=ft.Colors.WHITE,
 			width=200, 
 			read_only=True,
 			disabled=True,
 		)
-		data1 = ft.TextField(label="Compensação", width=200, hint_text="dd/mm/aaaa")
-		data2 = ft.TextField(label="A compensar", width=200, hint_text="dd/mm/aaaa")
+		data1 = ft.TextField(label="Compensação", width=200, hint_text="dd/mm/aaaa", bgcolor=ft.Colors.WHITE)
+		data2 = ft.TextField(label="A compensar", width=200, hint_text="dd/mm/aaaa", bgcolor=ft.Colors.WHITE,)
 		
 		# Função para aplicar máscara de data
 		def mascara_data1(e):
@@ -330,6 +334,7 @@ class CadastrarCompensacaoScreen(BaseScreen):
 		btn_data1 = ft.ElevatedButton(
 			text="Compensação",
 			icon=ft.Icons.CALENDAR_MONTH,
+			bgcolor=ft.Colors.WHITE,
 			color=ft.Colors.BLACK,
 			style=ft.ButtonStyle(
 				shape=ft.RoundedRectangleBorder(radius=8),
@@ -373,6 +378,7 @@ class CadastrarCompensacaoScreen(BaseScreen):
 		btn_data2 = ft.ElevatedButton(
 			text="A compensar",
 			icon=ft.Icons.CALENDAR_MONTH,
+			bgcolor=ft.Colors.WHITE,
 			color=ft.Colors.BLACK,
 			style=ft.ButtonStyle(
 				shape=ft.RoundedRectangleBorder(radius=8),

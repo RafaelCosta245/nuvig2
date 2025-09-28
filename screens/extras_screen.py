@@ -125,7 +125,7 @@ class ExtrasScreen(BaseScreen):
                         ft.TextButton(
                             text="Abrir",
                             icon=ft.Icons.ARROW_FORWARD,
-                            on_click=lambda e: self.navigate_to("disponibilidade_ferias"),
+                            on_click=lambda e: self.navigate_to("disponibilidade_extras"),
                         ),
                     ],
                     horizontal_alignment=ft.CrossAxisAlignment.START,
