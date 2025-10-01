@@ -94,13 +94,15 @@ class DatabaseManager:
             print(f"Erro ao buscar policial por matrícula: {e}")
             return None
 
-    def atualizar_policial(self, matricula: str, nome: str, qra: str, escala: str, situacao: str, inicio: str, unidade: str) -> bool:
-        """Atualiza os dados de um policial pela matrícula"""
+    def atualizar_policial(self, matricula: str, nome: str, qra: str, escala: str, situacao: str, inicio: str, unidade: str, funcao: str) -> bool:
+        """Atualiza os dados de um policial pela matrícula, incluindo a coluna `funcao`."""
         try:
             command = """
-                UPDATE policiais SET nome = ?, qra = ?, escala = ?, situacao = ?, inicio = ?, unidade = ? WHERE matricula = ?
+                UPDATE policiais
+                SET nome = ?, qra = ?, escala = ?, situacao = ?, inicio = ?, unidade = ?, funcao = ?
+                WHERE matricula = ?
             """
-            return self.execute_command(command, (nome, qra, escala, situacao, inicio, unidade, matricula))
+            return self.execute_command(command, (nome, qra, escala, situacao, inicio, unidade, funcao, matricula))
         except Exception as e:
             print(f"Erro ao atualizar policial: {e}")
             return False
@@ -343,16 +345,29 @@ class DatabaseManager:
             return False
 
     # --- Policiais ---
-    def inserir_policial(self, nome: str, qra: str, matricula: str, escala: str, situacao: str, inicio: str, unidade: str) -> bool:
-        """Insere um policial na tabela policiais"""
+    def inserir_policial(self, nome: str, qra: str, matricula: str, escala: str, situacao: str, inicio: str, unidade: str, funcao: str) -> bool:
+        """Insere um policial na tabela policiais.
+
+        Observação: espera que a tabela `policiais` contenha a coluna `funcao`.
+        """
         try:
             command = """
-                INSERT INTO policiais (nome, qra, matricula, escala, situacao, inicio, unidade)
-                VALUES (?, ?, ?, ?, ?, ?,?)
+                INSERT INTO policiais (nome, qra, matricula, escala, situacao, inicio, unidade, funcao)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """
-            return self.execute_command(command, (nome, qra, matricula, escala, situacao, inicio, unidade))
+            return self.execute_command(command, (nome, qra, matricula, escala, situacao, inicio, unidade, funcao))
         except Exception as e:
             print(f"Erro ao inserir policial: {e}")
+            return False
+
+    def deletar_policial(self, matricula: str) -> bool:
+        """Deleta um policial pela matrícula."""
+        try:
+            command = "DELETE FROM policiais WHERE matricula = ?"
+            return self.execute_command(command, (matricula,))
+        except Exception as e:
+            print(f"Erro ao deletar policial: {e}")
+            self.last_error = str(e)
             return False
         
     def get_system_stats(self) -> Dict[str, Any]:

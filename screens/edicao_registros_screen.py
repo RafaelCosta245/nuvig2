@@ -61,6 +61,31 @@ class EdicaoRegistrosScreen:
             visible=True
         )
 
+        self.delete_button = ft.ElevatedButton(
+            text="Deletar",
+            width=150,
+            bgcolor=ft.Colors.WHITE,
+            style=ft.ButtonStyle(
+                color=ft.Colors.RED,
+                text_style=ft.TextStyle(size=12, weight=ft.FontWeight.BOLD),
+                shape=ft.RoundedRectangleBorder(radius=8),
+                side=ft.BorderSide(1, ft.Colors.RED)),
+            icon=ft.Icons.DELETE,
+            on_click=self.deletar_registro,
+            visible=True
+        )
+
+        self.funcao_field = ft.Dropdown(
+            label="Função",
+            width=self.nome_field.width,
+            options=[
+                ft.dropdown.Option("Supervisor"),
+                ft.dropdown.Option("Chefe de equipe"),
+                ft.dropdown.Option("Operacional"),
+                ft.dropdown.Option("Administrativo"),
+            ]
+        )
+
         # Layout inicial: todos os campos visíveis
         return ft.Column([
             ft.Row([
@@ -70,15 +95,15 @@ class EdicaoRegistrosScreen:
             ft.Row([self.nome_field, self.qra_field], spacing=32, alignment=ft.MainAxisAlignment.CENTER),
             ft.Row([self.matricula_field, self.escala_field], spacing=32, alignment=ft.MainAxisAlignment.CENTER),
             ft.Row([self.situacao_field, self.data_inicio_field], spacing=32, alignment=ft.MainAxisAlignment.CENTER),
-            ft.Row([self.unidade_field, self.id_field], spacing=32, alignment=ft.MainAxisAlignment.CENTER),
-            ft.Row([self.save_button], alignment=ft.MainAxisAlignment.CENTER)
+            ft.Row([self.unidade_field, self.funcao_field], spacing=32, alignment=ft.MainAxisAlignment.CENTER),
+            ft.Row([self.save_button, self.delete_button], alignment=ft.MainAxisAlignment.CENTER)
         ], spacing=20, alignment=ft.MainAxisAlignment.START)
 
     def buscar_policial(self, e):
         matricula = self.matricula_pesquisa.value
         policial = self.db.get_policial_by_matricula(matricula)
         if policial:
-            self.policial_id = policial.get('id')
+            self.funcao_field.value = str(policial.get('funcao', ''))
             self.nome_field.value = str(policial.get('nome', ''))
             self.qra_field.value = str(policial.get('qra', ''))
             self.matricula_field.value = str(policial.get('matricula', ''))
@@ -100,7 +125,54 @@ class EdicaoRegistrosScreen:
             self.situacao_field.value = ""
             self.data_inicio_field.value = ""
             self.unidade_field.value = ""
+            self.funcao_field.value = ""
         self.app.page.update()
+
+    def deletar_registro(self, e):
+        page = self.app.page
+        matricula = (self.matricula_field.value or "").strip()
+        if not matricula:
+            dlg = ft.AlertDialog(
+                modal=True,
+                title=ft.Text("Atenção", color=ft.Colors.RED),
+                content=ft.Text("Informe/seleciona uma matrícula válida para deletar."),
+                actions=[ft.TextButton("OK", on_click=lambda ev: page.close(dlg))],
+                actions_alignment=ft.MainAxisAlignment.END,
+            )
+            page.open(dlg)
+            return
+
+        sucesso = self.db.deletar_policial(matricula)
+        if sucesso:
+            # Limpar campos após exclusão
+            self.nome_field.value = ""
+            self.qra_field.value = ""
+            self.matricula_field.value = ""
+            self.escala_field.value = ""
+            self.situacao_field.value = ""
+            self.data_inicio_field.value = ""
+            self.unidade_field.value = ""
+            self.funcao_field.value = ""
+
+            dlg_modal = ft.AlertDialog(
+                modal=True,
+                title=ft.Text("Sucesso", color=ft.Colors.GREEN),
+                content=ft.Text("Registro deletado com sucesso."),
+                actions=[ft.TextButton("OK", on_click=lambda ev: page.close(dlg_modal))],
+                actions_alignment=ft.MainAxisAlignment.END,
+            )
+            page.open(dlg_modal)
+        else:
+            erro_msg = getattr(self.db, 'last_error', None) or "Erro ao deletar registro"
+            dlg_modal = ft.AlertDialog(
+                modal=True,
+                title=ft.Text("Erro", color=ft.Colors.RED),
+                content=ft.Text(erro_msg),
+                actions=[ft.TextButton("OK", on_click=lambda ev: page.close(dlg_modal))],
+                actions_alignment=ft.MainAxisAlignment.END,
+            )
+            page.open(dlg_modal)
+        page.update()
 
     def salvar_alteracoes(self, e):
         nome = self.nome_field.value
@@ -116,7 +188,8 @@ class EdicaoRegistrosScreen:
         escala = self.escala_field.value
         situacao = self.situacao_field.value
         unidade = self.unidade_field.value
-        sucesso = self.db.atualizar_policial(matricula, nome, qra, escala, situacao, inicio_sql, unidade)
+        funcao = self.funcao_field.value
+        sucesso = self.db.atualizar_policial(matricula, nome, qra, escala, situacao, inicio_sql, unidade, funcao)
         page = self.app.page
         if sucesso:
             dlg_modal = ft.AlertDialog(

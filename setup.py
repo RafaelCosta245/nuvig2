@@ -23,6 +23,7 @@ if sys.platform == "win32":
 setup(
     name="NuvigApp",
     version="1.0",
+    author="Rafael Costa",
     description="Aplicativo de gestão NUViG",
     options={"build_exe": build_exe_options},
     executables=[
