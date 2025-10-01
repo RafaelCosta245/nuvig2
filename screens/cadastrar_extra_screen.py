@@ -273,115 +273,191 @@ class CadastrarExtraScreen(BaseScreen):
 				return
 			partes = data_formatada.split("/")
 			data_sql = f"{partes[2]}-{partes[1]}-{partes[0]}"
-			query_cal = "SELECT id FROM calendario WHERE data = ?"
-			result_cal = self.app.db.execute_query(query_cal, (data_sql,))
-			if not result_cal:
-				show_alert_dialog(e.control.page, "Data não encontrada no calendário!", success=False)
-				return
-			data_id = result_cal[0]["id"]
+			
+			# 2.1. VALIDAÇÃO DE FÉRIAS: Verificar se o policial está de férias na data
+			def gravar_extra_confirmado():
+				"""Função interna que executa a gravação após todas as validações"""
+				query_cal = "SELECT id FROM calendario WHERE data = ?"
+				result_cal = self.app.db.execute_query(query_cal, (data_sql,))
+				if not result_cal:
+					show_alert_dialog(e.control.page, "Data não encontrada no calendário!", success=False)
+					return
+				data_id = result_cal[0]["id"]
 
-			# 3. Verificações de exclusividade
-			turno_val = turno.value
-			operacao_val = operacao.value
-			query_exist = "SELECT * FROM extras WHERE policial_id = ? AND data_id = ? AND turno = ? AND operacao = ?"
-			exist = self.app.db.execute_query(query_exist, (policial_id, data_id, turno_val, operacao_val))
-			if exist:
-				show_alert_dialog(e.control.page, "Já existe uma extra com essa combinação!", success=False)
-				return
-
-			# Regra 2: Diurno/Noturno não pode coexistir com operação OBLL
-			query_conflict_obll = "SELECT * FROM extras WHERE policial_id = ? AND data_id = ? AND operacao = 'OBLL'"
-			conflict_obll = self.app.db.execute_query(query_conflict_obll, (policial_id, data_id))
-			if turno_val in ["Diurno", "Noturno"] and conflict_obll:
-				show_alert_dialog(e.control.page, "Já existe extra OBLL para esse policial e data!", success=False)
-				return
-
-			# Regra 3: OBLL não pode coexistir com turno Diurno/Noturno
-			query_conflict_dn = "SELECT * FROM extras WHERE policial_id = ? AND data_id = ? AND turno IN ('Diurno', 'Noturno')"
-			conflict_dn = self.app.db.execute_query(query_conflict_dn, (policial_id, data_id))
-			if operacao_val == "OBLL" and conflict_dn:
-				show_alert_dialog(e.control.page, "Já existe extra Diurno/Noturno para esse policial e data!",
-								  success=False)
-				return
-
-			# 4. Buscar intertício pelo nome usando a data informada
-			interticio_nome = ""
-			try:
-				query_interticio = (
-					"SELECT nome FROM interticios "
-					"WHERE date(?) BETWEEN date(data_inicial) AND date(data_final) LIMIT 1"
-				)
-				result_interticio = self.app.db.execute_query(query_interticio, (data_sql,))
-				if result_interticio and len(result_interticio) > 0:
-					if isinstance(result_interticio[0], dict) or hasattr(result_interticio[0], "keys"):
-						interticio_nome = result_interticio[0]["nome"]
-					else:
-						interticio_nome = result_interticio[0][0]
-			except Exception as e:
-				interticio_nome = ""
-
-			# 5. NOVA VERIFICAÇÃO: Verificar limite de horas por intertício
-			if interticio_nome:
-				# Buscar todas as extras do policial no intertício
-				query_horas_interticio = """
-                    SELECT e.horas 
-                    FROM extras e 
-                    JOIN calendario c ON e.data_id = c.id 
-                    JOIN interticios i ON date(c.data) BETWEEN date(i.data_inicial) AND date(i.data_final)
-                    WHERE e.policial_id = ? AND i.nome = ?
-                """
-				result_horas = self.app.db.execute_query(query_horas_interticio, (policial_id, interticio_nome))
-
-				# Calcular total de horas já cadastradas
-				total_horas_existentes = 0
-				if result_horas:
-					for row in result_horas:
-						horas_valor = row.get("horas") if isinstance(row, dict) else row[0]
-						try:
-							total_horas_existentes += int(horas_valor)
-						except (ValueError, TypeError):
-							pass
-
-				# Adicionar as horas da nova extra
-				horas_nova_extra = int(quant_horas.value) if quant_horas.value else 0
-				total_final = total_horas_existentes + horas_nova_extra
-
-				# Verificar se excede o limite de 96 horas
-				if total_final > 96:
-					show_alert_dialog(
-						e.control.page,
-						f"Limite de horas excedido para o intertício '{interticio_nome}'!\n"
-						f"Horas existentes: {total_horas_existentes}\n"
-						f"Horas da nova extra: {horas_nova_extra}\n"
-						f"Total: {total_final} (máximo: 96)",
-						success=False
-					)
+				# 3. Verificações de exclusividade
+				turno_val = turno.value
+				operacao_val = operacao.value
+				query_exist = "SELECT * FROM extras WHERE policial_id = ? AND data_id = ? AND turno = ? AND operacao = ?"
+				exist = self.app.db.execute_query(query_exist, (policial_id, data_id, turno_val, operacao_val))
+				if exist:
+					show_alert_dialog(e.control.page, "Já existe uma extra com essa combinação!", success=False)
 					return
 
-			# 6. Inserir extra incluindo o intertício
-			command = """
-                INSERT INTO extras (inicio, fim, horas, operacao, turno, policial_id, data_id, interticio)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """
-			horas_val = quant_horas.value
-			inicio_val = inicio.value
-			fim_val = fim.value
-			print("[DEBUG] Dados para gravar na tabela extras:")
-			print(f"inicio: {inicio_val}")
-			print(f"fim: {fim_val}")
-			print(f"horas: {horas_val}")
-			print(f"operacao: {operacao_val}")
-			print(f"turno: {turno_val}")
-			print(f"policial_id: {policial_id}")
-			print(f"data_id: {data_id}")
-			print(f"interticio: {interticio_nome}")
-			success = self.app.db.execute_command(command, (
-				inicio_val, fim_val, horas_val, operacao_val, turno_val, policial_id, data_id, interticio_nome
-			))
-			if success:
-				show_alert_dialog(e.control.page, "Extra gravada com sucesso!", success=True)
-			else:
-				show_alert_dialog(e.control.page, "Erro ao gravar extra!", success=False)
+				# Regra 2: Diurno/Noturno não pode coexistir com operação OBLL
+				query_conflict_obll = "SELECT * FROM extras WHERE policial_id = ? AND data_id = ? AND operacao = 'OBLL'"
+				conflict_obll = self.app.db.execute_query(query_conflict_obll, (policial_id, data_id))
+				if turno_val in ["Diurno", "Noturno"] and conflict_obll:
+					show_alert_dialog(e.control.page, "Já existe extra OBLL para esse policial e data!", success=False)
+					return
+
+				# Regra 3: OBLL não pode coexistir com turno Diurno/Noturno
+				query_conflict_dn = "SELECT * FROM extras WHERE policial_id = ? AND data_id = ? AND turno IN ('Diurno', 'Noturno')"
+				conflict_dn = self.app.db.execute_query(query_conflict_dn, (policial_id, data_id))
+				if operacao_val == "OBLL" and conflict_dn:
+					show_alert_dialog(e.control.page, "Já existe extra Diurno/Noturno para esse policial e data!",
+									  success=False)
+					return
+
+				# 4. Buscar intertício pelo nome usando a data informada
+				interticio_nome = ""
+				try:
+					query_interticio = (
+						"SELECT nome FROM interticios "
+						"WHERE date(?) BETWEEN date(data_inicial) AND date(data_final) LIMIT 1"
+					)
+					result_interticio = self.app.db.execute_query(query_interticio, (data_sql,))
+					if result_interticio and len(result_interticio) > 0:
+						if isinstance(result_interticio[0], dict) or hasattr(result_interticio[0], "keys"):
+							interticio_nome = result_interticio[0]["nome"]
+						else:
+							interticio_nome = result_interticio[0][0]
+				except Exception as ex:
+					interticio_nome = ""
+
+				# 5. NOVA VERIFICAÇÃO: Verificar limite de horas por intertício
+				if interticio_nome:
+					# Buscar todas as extras do policial no intertício
+					query_horas_interticio = """
+	                    SELECT e.horas 
+	                    FROM extras e 
+	                    JOIN calendario c ON e.data_id = c.id 
+	                    JOIN interticios i ON date(c.data) BETWEEN date(i.data_inicial) AND date(i.data_final)
+	                    WHERE e.policial_id = ? AND i.nome = ?
+	                """
+					result_horas = self.app.db.execute_query(query_horas_interticio, (policial_id, interticio_nome))
+
+					# Calcular total de horas já cadastradas
+					total_horas_existentes = 0
+					if result_horas:
+						for row in result_horas:
+							horas_valor = row.get("horas") if isinstance(row, dict) else row[0]
+							try:
+								total_horas_existentes += int(horas_valor)
+							except (ValueError, TypeError):
+								pass
+
+					# Adicionar as horas da nova extra
+					horas_nova_extra = int(quant_horas.value) if quant_horas.value else 0
+					total_final = total_horas_existentes + horas_nova_extra
+
+					# Verificar se excede o limite de 96 horas
+					if total_final > 96:
+						show_alert_dialog(
+							e.control.page,
+							f"Limite de horas excedido para o intertício '{interticio_nome}'!\n"
+							f"Horas existentes: {total_horas_existentes}\n"
+							f"Horas da nova extra: {horas_nova_extra}\n"
+							f"Total: {total_final} (máximo: 96)",
+							success=False
+						)
+						return
+
+				# 6. Inserir extra incluindo o intertício
+				command = """
+	                INSERT INTO extras (inicio, fim, horas, operacao, turno, policial_id, data_id, interticio)
+	                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+	            """
+				horas_val = quant_horas.value
+				inicio_val = inicio.value
+				fim_val = fim.value
+				print("[DEBUG] Dados para gravar na tabela extras:")
+				print(f"inicio: {inicio_val}")
+				print(f"fim: {fim_val}")
+				print(f"horas: {horas_val}")
+				print(f"operacao: {operacao_val}")
+				print(f"turno: {turno_val}")
+				print(f"policial_id: {policial_id}")
+				print(f"data_id: {data_id}")
+				print(f"interticio: {interticio_nome}")
+				success = self.app.db.execute_command(command, (
+					inicio_val, fim_val, horas_val, operacao_val, turno_val, policial_id, data_id, interticio_nome
+				))
+				if success:
+					show_alert_dialog(e.control.page, "Extra gravada com sucesso!", success=True)
+				else:
+					show_alert_dialog(e.control.page, "Erro ao gravar extra!", success=False)
+			
+			# Verificar se o policial está de férias
+			try:
+				query_ferias = "SELECT inicio1, fim1, inicio2, fim2, inicio3, fim3 FROM ferias WHERE policial_id = ?"
+				result_ferias = self.app.db.execute_query(query_ferias, (policial_id,))
+				
+				if result_ferias and len(result_ferias) > 0:
+					ferias_row = result_ferias[0]
+					data_extra = datetime.datetime.strptime(data_sql, "%Y-%m-%d").date()
+					em_ferias = False
+					periodo_conflito = ""
+					
+					# Verificar cada período de férias
+					periodos = [
+						("inicio1", "fim1"),
+						("inicio2", "fim2"),
+						("inicio3", "fim3")
+					]
+					
+					for inicio_col, fim_col in periodos:
+						inicio_ferias_str = ferias_row[inicio_col] if inicio_col in ferias_row.keys() else None
+						fim_ferias_str = ferias_row[fim_col] if fim_col in ferias_row.keys() else None
+						
+						if inicio_ferias_str and fim_ferias_str:
+							try:
+								inicio_ferias = datetime.datetime.strptime(inicio_ferias_str, "%Y-%m-%d").date()
+								fim_ferias = datetime.datetime.strptime(fim_ferias_str, "%Y-%m-%d").date()
+								
+								if inicio_ferias <= data_extra <= fim_ferias:
+									em_ferias = True
+									periodo_conflito = f"{inicio_ferias.strftime('%d/%m/%Y')} a {fim_ferias.strftime('%d/%m/%Y')}"
+									break
+							except (ValueError, TypeError):
+								continue
+					
+					if em_ferias:
+						# Mostrar diálogo de confirmação
+						def confirmar_gravar(e_confirm):
+							e_confirm.control.page.close(dlg_confirmacao)
+							gravar_extra_confirmado()
+						
+						def cancelar_gravar(e_cancel):
+							e_cancel.control.page.close(dlg_confirmacao)
+						
+						dlg_confirmacao = ft.AlertDialog(
+							modal=True,
+							title=ft.Text("Conflito com Férias", color=ft.Colors.ORANGE, weight=ft.FontWeight.BOLD),
+							content=ft.Text(
+								f"O policial {policial.value} está de férias no período:\n"
+								f"{periodo_conflito}\n\n"
+								f"A data {data_formatada} está dentro deste período.\n\n"
+								f"Deseja cadastrar a extra mesmo assim?",
+								size=14
+							),
+							actions=[
+								ft.TextButton("Não", on_click=cancelar_gravar),
+								ft.TextButton("Sim, cadastrar", on_click=confirmar_gravar, 
+											 style=ft.ButtonStyle(color=ft.Colors.GREEN)),
+							],
+							actions_alignment=ft.MainAxisAlignment.END,
+						)
+						
+						e.control.page.open(dlg_confirmacao)
+						return
+				
+				# Se não está de férias, gravar normalmente
+				gravar_extra_confirmado()
+				
+			except Exception as ex:
+				print(f"[Erro] Erro ao verificar férias: {ex}")
+				# Em caso de erro na verificação, prosseguir com a gravação
+				gravar_extra_confirmado()
 
 		# Layout do formulário em duas colunas e quatro linhas
 		# DatePicker
