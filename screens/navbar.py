@@ -23,6 +23,7 @@ class NavBar(ft.Row):
             ("Compensações", "compensacoes"),
             ("Férias", "ferias"),
             ("Ausências", "ausencias"),
+            ("TAC", "tac"),
             ("Banco de dados", "banco_dados"),
         ]
         

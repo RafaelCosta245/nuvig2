@@ -135,7 +135,7 @@ class ExtrasScreen(BaseScreen):
                 border=ft.border.all(1, ft.Colors.GREY),
                 border_radius=12,
                 bgcolor=ft.Colors.WHITE,
-                width=300,
+                width=260,
                 height=140
             )
 

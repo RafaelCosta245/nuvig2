@@ -23,6 +23,9 @@ from screens.cadastrar_extra_screen import CadastrarExtraScreen
 from screens.consultar_extras_screen import ConsultarExtrasScreen
 from screens.disponibilidade_ferias_screen import DisponibilidadeFeriasScreen
 from screens.disponibilidade_extras_screen import DisponibilidadeExtrasScreen
+from screens.tac_screen import TacScreen
+from screens.cadastrar_tac_screen import CadastrarTacScreen
+from screens.consultar_tac_screen import ConsultarTacScreen
 from screens.banco_dados_screen import BancoDadosScreen
 from screens.import_db_screen import ImportDBScreen
 from database.database_manager import DatabaseManager
@@ -293,6 +296,9 @@ class MainApp:
                 "disponibilidade_extras": DisponibilidadeExtrasScreen(self),
                 "cadastrar_ausencia": CadastrarAusenciasScreen(self),
                 "consultar_ausencias": ConsultarAusenciasScreen(self),
+                "tac": TacScreen(self),
+                "cadastrar_tac": CadastrarTacScreen(self),
+                "consultar_tac": ConsultarTacScreen(self),
                 "banco_dados": BancoDadosScreen(self),
                 "import_db": ImportDBScreen(self),
             }

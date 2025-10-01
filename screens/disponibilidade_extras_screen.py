@@ -3,6 +3,13 @@ import datetime
 from .base_screen import BaseScreen
 from database.database_manager import DatabaseManager
 import json
+import os
+from reportlab.lib.pagesizes import A4
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Image, Spacer, Paragraph
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib import colors
+from reportlab.lib.units import cm
+import re
 
 
 class DisponibilidadeExtrasScreen(BaseScreen):
@@ -22,8 +29,197 @@ class DisponibilidadeExtrasScreen(BaseScreen):
             text_align=ft.TextAlign.CENTER,
         )
 
+        def _sanitize_component(s: str) -> str:
+            s = str(s or "").strip()
+            # Substitui caracteres inválidos para nomes de arquivo no Windows
+            return re.sub(r"[\\/:*?\"<>|]+", "-", s)
+
         def exportar_pdf(e):
-            print("Exportando PDF")
+            try:
+                # Recalcula as linhas baseadas nos filtros atuais
+                linhas = calcular_disponibilidade(dropdown_opcao.value, dropdown_interticio.value)
+                # Monta dados da tabela para o PDF
+                data_rows = [["Data", "Tipo", "Turno", "Quantidade"]]
+                for it in linhas:
+                    data_rows.append([
+                        str(it.get("data", "")),
+                        str(it.get("tipo", "")),
+                        str(it.get("turno", "")),
+                        str(it.get("qtd", "")),
+                    ])
+
+                # Caminho do PDF (mesma estratégia da tela de férias)
+                try:
+                    db_mgr = self.app.db if hasattr(self.app, 'db') else DatabaseManager()
+                except Exception:
+                    db_mgr = DatabaseManager()
+                base_dir = db_mgr.get_root_path("save_path")
+                if not base_dir or not os.path.isdir(base_dir):
+                    base_dir = getattr(self.app, "output_dir", None) if hasattr(self, 'app') else None
+                if not base_dir or not os.path.isdir(base_dir):
+                    base_dir = os.getcwd()
+                os.makedirs(base_dir, exist_ok=True)
+
+                opcao = _sanitize_component(dropdown_opcao.value)
+                intert = _sanitize_component(dropdown_interticio.value)
+                pdf_filename = f"disponibilidade_extras_{opcao}_{intert}.pdf"
+                pdf_path = os.path.join(base_dir, pdf_filename)
+
+                doc = SimpleDocTemplate(
+                    pdf_path,
+                    pagesize=A4,
+                    rightMargin=1.5*cm,
+                    leftMargin=1.5*cm,
+                    topMargin=1.5*cm,
+                    bottomMargin=1.5*cm,
+                )
+
+                elements = []
+
+                # Cabeçalho com logo
+                logo_path = os.path.abspath("assets/icons/logoNUVIG.png")
+                if os.path.exists(logo_path):
+                    img = Image(logo_path, width=4*cm, height=3*cm)
+                    img.hAlign = 'CENTER'
+                    elements.append(img)
+                elements.append(Spacer(1, 0.5*cm))
+
+                # Título
+                titulo_txt = f"Disponibilidade de Extras — {opcao} — {intert}"
+                styles = getSampleStyleSheet()
+                elements.append(Paragraph(titulo_txt, styles['Title']))
+                elements.append(Spacer(1, 0.5*cm))
+
+                # Tabela
+                t = Table(data_rows, hAlign='CENTER')
+                t.setStyle(TableStyle([
+                    ('BACKGROUND', (0,0), (-1,0), colors.lightgrey),
+                    ('TEXTCOLOR', (0,0), (-1,0), colors.black),
+                    ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+                    ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+                    ('FONTSIZE', (0,0), (-1,0), 10),
+                    ('BOTTOMPADDING', (0,0), (-1,0), 8),
+                    ('GRID', (0,0), (-1,-1), 0.25, colors.grey),
+                ]))
+                elements.append(t)
+
+                doc.build(elements)
+
+                # Alert de sucesso
+                page = getattr(e, 'page', None) or getattr(getattr(e, 'control', None), 'page', None) or self.page
+                if page:
+                    dlg = ft.AlertDialog(
+                        modal=True,
+                        title=ft.Text("Sucesso"),
+                        content=ft.Text(f"PDF salvo com sucesso em:\n{pdf_path}"),
+                        actions=[ft.TextButton("OK", on_click=lambda ev: page.close(dlg))],
+                        actions_alignment=ft.MainAxisAlignment.END,
+                    )
+                    page.open(dlg)
+                    page.update()
+            except Exception as ex:
+                print("[Extras][exportar_pdf][EXCEPTION]", ex)
+
+        def exportar_texto(e):
+            try:
+                linhas = calcular_disponibilidade(dropdown_opcao.value, dropdown_interticio.value)
+                opcao_atual = str(dropdown_opcao.value or "")
+                # Agrupar por data -> {data: {chave: qtd}}
+                # Para Rotina: chaves 'diurno'/'noturno'
+                # Para OBLL: chave única 'obll'
+                por_data = {}
+                for it in linhas:
+                    data = str(it.get('data', ''))
+                    tipo = str(it.get('tipo', '')).lower()
+                    turno = str(it.get('turno', '')).lower()
+                    qtd = int(it.get('qtd', 0) or 0)
+                    if qtd <= 0 or not data:
+                        continue
+                    if tipo == 'obll' or opcao_atual == 'OBLL':
+                        chave = 'obll'
+                    else:
+                        chave = turno  # 'diurno' ou 'noturno'
+                    por_data.setdefault(data, {}).setdefault(chave, 0)
+                    por_data[data][chave] += qtd
+
+                # Cabeçalho
+                intert_raw = dropdown_interticio.value  # ex: set/out-25
+                if intert_raw and '-' in intert_raw:
+                    meses_part, ano_part = intert_raw.split('-', 1)
+                    meses_fmt = "/".join([m.capitalize() for m in (meses_part or '').split('/') if m])
+                    intert_fmt = f"{meses_fmt}-{ano_part}"
+                else:
+                    intert_fmt = intert_raw
+
+                linhas_txt = []
+                linhas_txt.append("Extras NUVIG")
+                linhas_txt.append(f"Vagas Disponíveis - {opcao_atual}")
+                if intert_fmt:
+                    linhas_txt.append(f"(INTERSTÍCIO {intert_fmt})")
+                linhas_txt.append("")
+
+                # Ordenar datas dd/mm/YYYY corretamente: converter para datetime para ordenar
+                def parse_ddmmyyyy(s):
+                    try:
+                        return datetime.datetime.strptime(s, "%d/%m/%Y")
+                    except Exception:
+                        return datetime.datetime.max
+                for data in sorted(por_data.keys(), key=parse_ddmmyyyy):
+                    linhas_txt.append(f"Dia {data}")
+                    turnos = por_data[data]
+                    # Diurno
+                    if 'diurno' in turnos and turnos['diurno'] > 0:
+                        linhas_txt.append("Diurna:")
+                        for i in range(1, turnos['diurno'] + 1):
+                            linhas_txt.append(f"{i}-")
+                        linhas_txt.append("")
+                    # Noturno
+                    if 'noturno' in turnos and turnos['noturno'] > 0:
+                        linhas_txt.append("Noturna:")
+                        for i in range(1, turnos['noturno'] + 1):
+                            linhas_txt.append(f"{i}-")
+                        linhas_txt.append("")
+                    # OBLL (se existir nas linhas)
+                    if 'obll' in turnos and turnos['obll'] > 0:
+                        linhas_txt.append("OBLL:")
+                        for i in range(1, turnos['obll'] + 1):
+                            linhas_txt.append(f"{i}-")
+                        linhas_txt.append("")
+
+                conteudo = "\n".join(linhas_txt).strip() + "\n"
+
+                # Diretório igual ao PDF
+                try:
+                    db_mgr = self.app.db if hasattr(self.app, 'db') else DatabaseManager()
+                except Exception:
+                    db_mgr = DatabaseManager()
+                base_dir = db_mgr.get_root_path("save_path")
+                if not base_dir or not os.path.isdir(base_dir):
+                    base_dir = getattr(self.app, "output_dir", None) if hasattr(self, 'app') else None
+                if not base_dir or not os.path.isdir(base_dir):
+                    base_dir = os.getcwd()
+                os.makedirs(base_dir, exist_ok=True)
+
+                opcao = _sanitize_component(dropdown_opcao.value)
+                intert = _sanitize_component(dropdown_interticio.value)
+                txt_filename = f"disponibilidade_extras_{opcao}_{intert}.txt"
+                txt_path = os.path.join(base_dir, txt_filename)
+                with open(txt_path, 'w', encoding='utf-8') as f:
+                    f.write(conteudo)
+
+                page = getattr(e, 'page', None) or getattr(getattr(e, 'control', None), 'page', None) or self.page
+                if page:
+                    dlg = ft.AlertDialog(
+                        modal=True,
+                        title=ft.Text("Sucesso"),
+                        content=ft.Text(f"Texto salvo com sucesso em:\n{txt_path}"),
+                        actions=[ft.TextButton("OK", on_click=lambda ev: page.close(dlg))],
+                        actions_alignment=ft.MainAxisAlignment.END,
+                    )
+                    page.open(dlg)
+                    page.update()
+            except Exception as ex:
+                print("[Extras][exportar_texto][EXCEPTION]", ex)
 
         # Helpers de data/intertício
         pt_months = {
@@ -390,7 +586,7 @@ class DisponibilidadeExtrasScreen(BaseScreen):
                 try:
                     q_cond = (
                         "SELECT p.id, p.qra, p.nome "
-                        "FROM conduta c JOIN policiais p ON c.policial_id = p.id "
+                        "FROM tacs c JOIN policiais p ON c.policial_id = p.id "
                         "WHERE p.unidade = 'NUVIG' AND date(c.data) = date(?)"
                     )
                     rows_cond = self.db.execute_query(q_cond, (data_iso,))
@@ -706,7 +902,7 @@ class DisponibilidadeExtrasScreen(BaseScreen):
         btn_export = ft.ElevatedButton(
             text="Exportar PDF",
             icon=ft.Icons.PICTURE_AS_PDF,
-            width=150,
+            width=200,
             bgcolor=ft.Colors.WHITE,
             style=ft.ButtonStyle(
                 color=ft.Colors.BLACK,
@@ -717,6 +913,23 @@ class DisponibilidadeExtrasScreen(BaseScreen):
             tooltip="Exportar pdf do relatório de disponibilidade de extras",
             on_click=exportar_pdf
         )
+        btn_texto = ft.ElevatedButton(
+            text="Texto para Whatsapp",
+            icon=ft.Icons.TELEGRAM,
+            width=btn_export.width,
+            bgcolor=ft.Colors.WHITE,
+            style=ft.ButtonStyle(
+                color=ft.Colors.BLACK,
+                text_style=ft.TextStyle(size=12, weight=ft.FontWeight.BOLD),
+                shape=ft.RoundedRectangleBorder(radius=8),
+                side=ft.BorderSide(1, ft.Colors.BLACK),
+            ),
+            tooltip="Exportar texdo para Whatsapp",
+            on_click=exportar_texto
+        )
+
+        row_buttons = ft.Row(controls=[btn_export, btn_texto],
+                             alignment=ft.MainAxisAlignment.CENTER)
 
         main_column = ft.Column(
             controls=[
@@ -725,7 +938,7 @@ class DisponibilidadeExtrasScreen(BaseScreen):
                 ft.Container(height=30),
                 tabela_container,
                 ft.Container(height=30),
-                btn_export
+                row_buttons
             ],
             alignment=ft.MainAxisAlignment.START,
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
