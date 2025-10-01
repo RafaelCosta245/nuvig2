@@ -21,7 +21,9 @@ class ConsultarCompensacoesScreen(BaseScreen):
 				text_style=ft.TextStyle(size=12)
 			)
 		)
-		field_qra = ft.TextField(label="QRA", width=200)
+		field_qra = ft.TextField(label="QRA",
+								 bgcolor=ft.Colors.WHITE,
+								 width=200)
 		col_qra = ft.Column([txt_pesq_qra, field_qra], spacing=8, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
 
 		txt_pesq_policial = ft.TextButton(
@@ -31,7 +33,10 @@ class ConsultarCompensacoesScreen(BaseScreen):
 		        text_style=ft.TextStyle(size=12)
 		    )
 		)
-		field_policial = ft.TextField(label="Matrícula", width=200, max_length=8)
+		field_policial = ft.TextField(label="Matrícula",
+									  width=200,
+									  bgcolor=ft.Colors.WHITE,
+									  max_length=8)
 		col_policial = ft.Column([txt_pesq_policial, field_policial], spacing=8, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
 
 		txt_pesq_data_compensacao = ft.TextButton(
@@ -42,7 +47,10 @@ class ConsultarCompensacoesScreen(BaseScreen):
 		    ),
 		    on_click=lambda e: print("pesquisa por data de compensação")
 		)
-		field_data_compensacao = ft.TextField(label="Data Compensação", width=200, hint_text="dd/mm/aaaa")
+		field_data_compensacao = ft.TextField(label="Data Compensação",
+											  width=200,
+											  bgcolor=ft.Colors.WHITE,
+											  hint_text="dd/mm/aaaa")
 		
 		# Função para aplicar máscara de data compensação
 		def mascara_data_compensacao(e):
@@ -67,7 +75,10 @@ class ConsultarCompensacoesScreen(BaseScreen):
 		    ),
 		    on_click=lambda e: print("pesquisa por data a compensar")
 		)
-		field_data_a_compensar = ft.TextField(label="Data A Compensar", width=200, hint_text="dd/mm/aaaa")
+		field_data_a_compensar = ft.TextField(label="Data A Compensar",
+											  width=200,
+											  bgcolor=ft.Colors.WHITE,
+											  hint_text="dd/mm/aaaa")
 		
 		# Função para aplicar máscara de data a compensar
 		def mascara_data_a_compensar(e):

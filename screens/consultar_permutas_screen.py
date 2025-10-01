@@ -21,8 +21,12 @@ class ConsultarPermutasScreen(BaseScreen):
                 text_style=ft.TextStyle(size=12)
             )
         )
-        field_qra_solicitante = ft.TextField(label="QRA Solicitante", width=200)
-        col_qra_solicitante = ft.Column([txt_pesq_qra_solicitante, field_qra_solicitante], spacing=8, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
+        field_qra_solicitante = ft.TextField(label="QRA Solicitante",
+                                             width=200,
+                                             bgcolor=ft.Colors.WHITE,)
+        col_qra_solicitante = ft.Column(controls=[txt_pesq_qra_solicitante, field_qra_solicitante],
+                                        spacing=8,
+                                        horizontal_alignment=ft.CrossAxisAlignment.CENTER)
 
         txt_pesq_qra_permutado = ft.TextButton(
             "QRA Permutado:",
@@ -31,8 +35,12 @@ class ConsultarPermutasScreen(BaseScreen):
                 text_style=ft.TextStyle(size=12)
             )
         )
-        field_qra_permutado = ft.TextField(label="QRA Permutado", width=200)
-        col_qra_permutado = ft.Column([txt_pesq_qra_permutado, field_qra_permutado], spacing=8, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
+        field_qra_permutado = ft.TextField(label="QRA Permutado",
+                                           bgcolor=ft.Colors.WHITE,
+                                           width=200)
+        col_qra_permutado = ft.Column(controls=[txt_pesq_qra_permutado, field_qra_permutado],
+                                      spacing=8,
+                                      horizontal_alignment=ft.CrossAxisAlignment.CENTER)
 
         txt_pesq_policial_solicitante = ft.TextButton(
             "Pesquise pela matrícula do solicitante:",
@@ -41,8 +49,13 @@ class ConsultarPermutasScreen(BaseScreen):
                 text_style=ft.TextStyle(size=12)
             )
         )
-        field_policial_solicitante = ft.TextField(label="Matrícula Solicitante", width=200)
-        col_policial_solicitante = ft.Column([txt_pesq_policial_solicitante, field_policial_solicitante], spacing=8, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
+        field_policial_solicitante = ft.TextField(label="Matrícula Solicitante",
+                                                  bgcolor=ft.Colors.WHITE,
+                                                  width=200)
+
+        col_policial_solicitante = ft.Column(controls=[txt_pesq_policial_solicitante, field_policial_solicitante],
+                                             spacing=8,
+                                             horizontal_alignment=ft.CrossAxisAlignment.CENTER)
 
         txt_pesq_policial_permutado = ft.TextButton(
             "Pesquise pela matrícula do permutado:",
@@ -51,8 +64,12 @@ class ConsultarPermutasScreen(BaseScreen):
                 text_style=ft.TextStyle(size=12)
             )
         )
-        field_policial_permutado = ft.TextField(label="Matrícula Permutado", width=200)
-        col_policial_permutado = ft.Column([txt_pesq_policial_permutado, field_policial_permutado], spacing=8, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
+        field_policial_permutado = ft.TextField(label="Matrícula Permutado",
+                                                width=200,
+                                                bgcolor=ft.Colors.WHITE)
+        col_policial_permutado = ft.Column(controls=[txt_pesq_policial_permutado, field_policial_permutado],
+                                           spacing=8,
+                                           horizontal_alignment=ft.CrossAxisAlignment.CENTER)
 
         txt_pesq_data_permuta = ft.TextButton(
             "Pesquise por data da permuta:",
@@ -62,7 +79,10 @@ class ConsultarPermutasScreen(BaseScreen):
             ),
             on_click=lambda e: print("pesquisa por data da permuta")
         )
-        field_data_permuta = ft.TextField(label="Data da Permuta", width=200, hint_text="dd/mm/aaaa")
+        field_data_permuta = ft.TextField(label="Data da Permuta",
+                                          width=200,
+                                          hint_text="dd/mm/aaaa",
+                                          bgcolor=ft.Colors.WHITE)
         
         # Função para aplicar máscara de data
         def mascara_data_permuta(e):

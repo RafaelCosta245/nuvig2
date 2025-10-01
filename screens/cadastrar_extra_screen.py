@@ -11,12 +11,14 @@ class CadastrarExtraScreen(BaseScreen):
 
 	def get_content(self) -> ft.Control:
 		# Campos do formulário
-		matricula = ft.TextField(label="Matrícula", width=200, max_length=8)
-		policial = ft.TextField(label="Policial", width=200, read_only=False)
-		data = ft.TextField(label="Data", width=200, hint_text="dd/mm/aaaa")
+		matricula = ft.TextField(label="Matrícula", width=200, max_length=8, bgcolor=ft.Colors.WHITE)
+		policial = ft.TextField(label="Policial", width=200, read_only=False, bgcolor=ft.Colors.WHITE)
+		data = ft.TextField(label="Data", width=200, hint_text="dd/mm/aaaa", bgcolor=ft.Colors.WHITE)
 		operacao = ft.Dropdown(
 			label="Operação",
 			width=200,
+			filled=True,  # Precisa ser True para fill_color funcionar
+			fill_color=ft.Colors.WHITE,
 			options=[
 				ft.dropdown.Option("Rotina"),
 				ft.dropdown.Option("OBLL"),
@@ -26,15 +28,17 @@ class CadastrarExtraScreen(BaseScreen):
 		turno = ft.Dropdown(
 			label="Turno",
 			width=200,
+			filled=True,  # Precisa ser True para fill_color funcionar
+			fill_color=ft.Colors.WHITE,
 			options=[
 				ft.dropdown.Option("Diurno"),
 				ft.dropdown.Option("Noturno"),
 				ft.dropdown.Option("Vespertino"),
 			]
 		)
-		inicio = ft.TextField(label="Início", width=200, hint_text="hh:mm")
-		fim = ft.TextField(label="Fim", width=200, hint_text="hh:mm")
-		quant_horas = ft.TextField(label="Quant. Horas", width=200)
+		inicio = ft.TextField(label="Início", width=200, hint_text="hh:mm", bgcolor=ft.Colors.WHITE)
+		fim = ft.TextField(label="Fim", width=200, hint_text="hh:mm", bgcolor=ft.Colors.WHITE)
+		quant_horas = ft.TextField(label="Quant. Horas", width=200, bgcolor=ft.Colors.WHITE)
 		# horas_disp = ft.Text(value="Horas disponíveis", text_align=ft.TextAlign.LEFT)
 		# interticio = ft.Text(value="Interticio:", text_align=ft.TextAlign.LEFT)
 		horas_disp = ft.Text(value='Disponíveis:', weight=ft.FontWeight.BOLD, size=14)
@@ -409,6 +413,7 @@ class CadastrarExtraScreen(BaseScreen):
 			color=ft.Colors.BLACK,
 			style=ft.ButtonStyle(
 				shape=ft.RoundedRectangleBorder(radius=8),
+				bgcolor=ft.Colors.WHITE,
 				side=ft.BorderSide(
 					width=1,
 					color=ft.Colors.BLACK

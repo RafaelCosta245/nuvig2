@@ -84,7 +84,10 @@ class CadastrarTacScreen(BaseScreen):
 			read_only=True,
 			disabled=True,
 		)
-		data1 = ft.TextField(label="Data do TAC", width=200, hint_text="dd/mm/aaaa", bgcolor=ft.Colors.WHITE)
+		data1 = ft.TextField(label="Data do TAC",
+							 width=200,
+							 hint_text="dd/mm/aaaa",
+							 bgcolor=ft.Colors.WHITE)
 		processo = ft.TextField(
 			label="Processo",
 			bgcolor=ft.Colors.WHITE,

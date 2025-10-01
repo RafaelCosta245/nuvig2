@@ -21,7 +21,9 @@ class ConsultarFeriasScreen(BaseScreen):
                 text_style=ft.TextStyle(size=12)
             )
         )
-        field_qra = ft.TextField(label="QRA", width=200)
+        field_qra = ft.TextField(label="QRA",
+                                 bgcolor=ft.Colors.WHITE,
+                                 width=200)
         col_qra = ft.Column([txt_pesq_qra, field_qra], spacing=8, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
 
         txt_pesq_policial = ft.TextButton(
@@ -31,7 +33,11 @@ class ConsultarFeriasScreen(BaseScreen):
                 text_style=ft.TextStyle(size=12)
             )
         )
-        field_policial = ft.TextField(label="Matrícula", width=200, max_length=8)
+        field_policial = ft.TextField(label="Matrícula",
+                                      bgcolor=ft.Colors.WHITE,
+                                      width=200,
+                                      max_length=8)
+
         col_policial = ft.Column([txt_pesq_policial, field_policial], spacing=8, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
 
         txt_pesq_periodo = ft.TextButton(
@@ -42,7 +48,9 @@ class ConsultarFeriasScreen(BaseScreen):
             ),
             on_click=lambda e: print("pesquisa por período aquisitivo")
         )
-        field_periodo = ft.TextField(label="Período Aquisitivo", width=200)
+        field_periodo = ft.TextField(label="Período Aquisitivo",
+                                     bgcolor=ft.Colors.WHITE,
+                                     width=200)
         col_periodo = ft.Column([txt_pesq_periodo, field_periodo], spacing=8, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
 
         txt_pesq_data = ft.TextButton(
@@ -53,7 +61,10 @@ class ConsultarFeriasScreen(BaseScreen):
             ),
             on_click=lambda e: print("pesquisa por data")
         )
-        field_data = ft.TextField(label="Data", width=200, hint_text="dd/mm/aaaa")
+        field_data = ft.TextField(label="Data",
+                                  width=200,
+                                  bgcolor=ft.Colors.WHITE,
+                                  hint_text="dd/mm/aaaa")
         
         # Função para aplicar máscara de data
         def mascara_data(e):
@@ -605,12 +616,14 @@ class ConsultarFeriasScreen(BaseScreen):
             field_periodo_aquisitivo = ft.TextField(
                 label="Período Aquisitivo",
                 value=str(periodo_aquisitivo),
+                bgcolor=ft.Colors.WHITE,
                 width=200
             )
             
             field_inicio1 = ft.TextField(
                 label="Início Período 1",
                 value=sql_to_display_date(inicio1),
+                bgcolor=ft.Colors.WHITE,
                 width=200,
                 hint_text="DD/MM/YYYY"
             )
@@ -618,6 +631,7 @@ class ConsultarFeriasScreen(BaseScreen):
             field_fim1 = ft.TextField(
                 label="Fim Período 1",
                 value=sql_to_display_date(fim1),
+                bgcolor=ft.Colors.WHITE,
                 width=200,
                 hint_text="DD/MM/YYYY"
             )
@@ -625,6 +639,7 @@ class ConsultarFeriasScreen(BaseScreen):
             field_inicio2 = ft.TextField(
                 label="Início Período 2",
                 value=sql_to_display_date(inicio2),
+                bgcolor=ft.Colors.WHITE,
                 width=200,
                 hint_text="DD/MM/YYYY"
             )
@@ -632,6 +647,7 @@ class ConsultarFeriasScreen(BaseScreen):
             field_fim2 = ft.TextField(
                 label="Fim Período 2",
                 value=sql_to_display_date(fim2),
+                bgcolor=ft.Colors.WHITE,
                 width=200,
                 hint_text="DD/MM/YYYY"
             )
@@ -639,6 +655,7 @@ class ConsultarFeriasScreen(BaseScreen):
             field_inicio3 = ft.TextField(
                 label="Início Período 3",
                 value=sql_to_display_date(inicio3),
+                bgcolor=ft.Colors.WHITE,
                 width=200,
                 hint_text="DD/MM/YYYY"
             )
@@ -646,6 +663,7 @@ class ConsultarFeriasScreen(BaseScreen):
             field_fim3 = ft.TextField(
                 label="Fim Período 3",
                 value=sql_to_display_date(fim3),
+                bgcolor=ft.Colors.WHITE,
                 width=200,
                 hint_text="DD/MM/YYYY"
             )

@@ -80,18 +80,35 @@ class CadastrarAusenciasScreen(BaseScreen):
             show_alert_dialog(page, mensagem, success=False)
 
         # Campos
-        matricula = ft.TextField(label="Matrícula", width=200, max_length=8, on_change=buscar_policial)
-        policial = ft.TextField(label="QRA", width=200, read_only=False)
-        nome = ft.TextField(label="Nome", width=200, read_only=True, disabled=True,
-                             bgcolor=ft.Colors.GREY_100, border_color=ft.Colors.GREY_400,
-                             text_style=ft.TextStyle(color=ft.Colors.GREY_700))
-        equipe = ft.TextField(label="Equipe", width=200, read_only=True, disabled=True,
-                               bgcolor=ft.Colors.GREY_100, border_color=ft.Colors.GREY_400,
-                               text_style=ft.TextStyle(color=ft.Colors.GREY_700))
+        matricula = ft.TextField(label="Matrícula",
+                                 width=200,
+                                 bgcolor=ft.Colors.WHITE,
+                                 max_length=8,
+                                 on_change=buscar_policial)
+        policial = ft.TextField(label="QRA",
+                                width=200,
+                                bgcolor=ft.Colors.WHITE,
+                                read_only=False)
+        nome = ft.TextField(label="Nome",
+                            width=200,
+                            read_only=True,
+                            disabled=True,
+                            bgcolor=ft.Colors.GREY_100,
+                            border_color=ft.Colors.GREY_400,
+                            text_style=ft.TextStyle(color=ft.Colors.GREY_700))
+        equipe = ft.TextField(label="Equipe",
+                              width=200,
+                              read_only=True,
+                              disabled=True,
+                              bgcolor=ft.Colors.GREY_100,
+                              border_color=ft.Colors.GREY_400,
+                              text_style=ft.TextStyle(color=ft.Colors.GREY_700))
 
         licenca = ft.Dropdown(
             label="Motivo",
             width=(2*nome.width + 32),
+            filled=True,  # Precisa ser True para fill_color funcionar
+            fill_color=ft.Colors.WHITE,
             options=[
                 ft.dropdown.Option("Licença para tratamento de saúde"),
                 ft.dropdown.Option("Licença maternidade"),
@@ -107,10 +124,20 @@ class CadastrarAusenciasScreen(BaseScreen):
             ]
         )
 
-        dias = ft.TextField(label="Dias", width=120, text_align=ft.TextAlign.CENTER, hint_text="nº de dias")
+        dias = ft.TextField(label="Dias",
+                            width=120,
+                            bgcolor=ft.Colors.WHITE,
+                            text_align=ft.TextAlign.CENTER,
+                            hint_text="nº de dias")
 
-        data_inicio1 = ft.TextField(label="Data Início", width=200, hint_text="dd/mm/aaaa")
-        data_fim1 = ft.TextField(label="Data Fim", width=200, hint_text="dd/mm/aaaa")
+        data_inicio1 = ft.TextField(label="Data Início",
+                                    width=200,
+                                    bgcolor=ft.Colors.WHITE,
+                                    hint_text="dd/mm/aaaa")
+        data_fim1 = ft.TextField(label="Data Fim",
+                                 bgcolor=ft.Colors.WHITE,
+                                 width=200,
+                                 hint_text="dd/mm/aaaa")
 
         # Máscaras
         def mask_date(field):
@@ -271,6 +298,7 @@ class CadastrarAusenciasScreen(BaseScreen):
             text="Início",
             icon=ft.Icons.CALENDAR_MONTH,
             color=ft.Colors.BLACK,
+            bgcolor=ft.Colors.WHITE,
             style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8), side=ft.BorderSide(width=1, color=ft.Colors.BLACK)),
             width=100,
             on_click=lambda e: open_picker(datepicker_inicio1, e.control.page)
@@ -279,6 +307,7 @@ class CadastrarAusenciasScreen(BaseScreen):
             text="Fim",
             icon=ft.Icons.CALENDAR_MONTH,
             color=ft.Colors.BLACK,
+            bgcolor=ft.Colors.WHITE,
             style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8), side=ft.BorderSide(width=1, color=ft.Colors.BLACK)),
             width=100,
             on_click=lambda e: open_picker(datepicker_fim1, e.control.page)

@@ -28,6 +28,8 @@ class BancoExtrasScreen(BaseScreen):
 		dropdown_operacao = ft.Dropdown(
 			label="Add/Remover",
 			width=field_width,
+			filled=True,  # Precisa ser True para fill_color funcionar
+			fill_color=ft.Colors.WHITE,
 			options=[ft.dropdown.Option("Adicionar Horas"), ft.dropdown.Option("Remover Horas")]
 		)
 		row1 = ft.Row(
@@ -47,6 +49,7 @@ class BancoExtrasScreen(BaseScreen):
 			label="Quant. horas",
 			width=field_width,
 			height=field_height,
+			bgcolor=ft.Colors.WHITE,
 			input_filter=ft.InputFilter(
 				allow=True,
 				regex_string=r"^[0-9]*$",
@@ -70,6 +73,7 @@ class BancoExtrasScreen(BaseScreen):
 			label="Ex.: ago/set-25",
 			width=field_width,
 			height=field_height,
+			bgcolor=ft.Colors.WHITE,
 			on_change=lambda e: buscar_horas_disponiveis()
 		)
 		row3 = ft.Row(
@@ -88,6 +92,8 @@ class BancoExtrasScreen(BaseScreen):
 		dropdown_tipo = ft.Dropdown(
 			label="Operação",
 			width=field_width,
+			filled=True,  # Precisa ser True para fill_color funcionar
+			fill_color=ft.Colors.WHITE,
 			options=[ft.dropdown.Option("Rotina"), ft.dropdown.Option("OBLL"), ft.dropdown.Option("Outro")],
 			on_change=lambda e: buscar_horas_disponiveis()
 		)

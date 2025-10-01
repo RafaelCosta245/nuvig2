@@ -12,22 +12,35 @@ class EdicaoRegistrosScreen:
 
     def get_content(self):
         # Campo de pesquisa de matrícula
-        self.matricula_pesquisa = ft.TextField(label="Matrícula", width=200, on_change=self.buscar_policial, max_length=8)
+        self.matricula_pesquisa = ft.TextField(label="Matrícula", width=200, on_change=self.buscar_policial, max_length=8, bgcolor=ft.Colors.WHITE)
 
         # Texto explicativo
         texto_explicativo = ft.Text("Pesquise pela matrícula", size=14, color=ft.Colors.BLACK,
                                     text_align=ft.TextAlign.CENTER)
 
         # Campos do formulário
-        self.nome_field = ft.TextField(label="Nome", width=400)
-        self.qra_field = ft.TextField(label="QRA", width=self.nome_field.width)
-        self.matricula_field = ft.TextField(label="Matrícula", width=self.nome_field.width, read_only=True)
+        self.nome_field = ft.TextField(label="Nome", width=400, bgcolor=ft.Colors.WHITE)
+        self.qra_field = ft.TextField(label="QRA", width=self.nome_field.width, bgcolor=ft.Colors.WHITE)
+        self.matricula_field = ft.TextField(label="Matrícula", width=self.nome_field.width, read_only=True, bgcolor=ft.Colors.WHITE)
         
         escala_options = ["A", "B", "C", "D", "ABC", "BCD", "CDA", "DAB", "AB", "BC", "CD", "DA"]
-        self.escala_field = ft.Dropdown(label="Escala", width=self.nome_field.width, options=[ft.dropdown.Option(e) for e in escala_options])
+        self.escala_field = ft.Dropdown(label="Escala",
+                                        width=self.nome_field.width,
+                                        options=[ft.dropdown.Option(e) for e in escala_options],
+                                        filled=True,  # Precisa ser True para fill_color funcionar
+                                        fill_color=ft.Colors.WHITE,
+                                        )
         
-        self.situacao_field = ft.Dropdown(label="Situação", width=self.nome_field.width, options=[ft.dropdown.Option("ativo"), ft.dropdown.Option("inativo")])
-        self.data_inicio_field = ft.TextField(label="Data de Início", width=self.nome_field.width, hint_text="dd/mm/aaaa")
+        self.situacao_field = ft.Dropdown(label="Situação",
+                                          width=self.nome_field.width,
+                                          options=[ft.dropdown.Option("ativo"), ft.dropdown.Option("inativo")],
+                                          filled = True,  # Precisa ser True para fill_color funcionar
+                                          fill_color = ft.Colors.WHITE,
+        )
+        self.data_inicio_field = ft.TextField(label="Data de Início",
+                                              width=self.nome_field.width,
+                                              hint_text="dd/mm/aaaa",
+                                              bgcolor=ft.Colors.WHITE)
         
         # Função para aplicar máscara de data
         def mascara_data_inicio(e):
@@ -44,9 +57,14 @@ class EdicaoRegistrosScreen:
         
         self.data_inicio_field.on_change = mascara_data_inicio
         # Dropdown de unidade
-        self.id_field = ft.TextField(label="ID", width=self.nome_field.width, read_only=True)
+        self.id_field = ft.TextField(label="ID", width=self.nome_field.width, read_only=True, bgcolor=ft.Colors.WHITE)
         unidades_opcoes = [ft.dropdown.Option(u) for u in self.db.buscar_unidades()]
-        self.unidade_field = ft.Dropdown(label="Unidade", width=self.nome_field.width, options=unidades_opcoes)
+        self.unidade_field = ft.Dropdown(label="Unidade",
+                                         width=self.nome_field.width,
+                                         options=unidades_opcoes,
+                                         filled=True,  # Precisa ser True para fill_color funcionar
+                                         fill_color=ft.Colors.WHITE,
+                                         )
         self.save_button = ft.ElevatedButton(
             text="Salvar Alterações",
             width=150,
@@ -78,6 +96,8 @@ class EdicaoRegistrosScreen:
         self.funcao_field = ft.Dropdown(
             label="Função",
             width=self.nome_field.width,
+            filled=True,  # Precisa ser True para fill_color funcionar
+            fill_color=ft.Colors.WHITE,
             options=[
                 ft.dropdown.Option("Supervisor"),
                 ft.dropdown.Option("Chefe de equipe"),

@@ -279,6 +279,8 @@ class DisponibilidadeFeriasScreen:
             value=self.selected_opcao,
             width=120,
             label="Equipe",
+            filled=True,  # Precisa ser True para fill_color funcionar
+            fill_color=ft.Colors.WHITE,
             on_change=atualizar_tabela
         )
         dropdown_ano = ft.Dropdown(
@@ -288,6 +290,8 @@ class DisponibilidadeFeriasScreen:
             value=self.selected_ano,
             width=120,
             label="Ano",
+            filled=True,  # Precisa ser True para fill_color funcionar
+            fill_color=ft.Colors.WHITE,
             on_change=atualizar_tabela
         )
         row_dropdowns = ft.Row(

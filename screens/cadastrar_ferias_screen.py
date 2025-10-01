@@ -365,12 +365,14 @@ class CadastrarFeriasScreen(BaseScreen):
             label="Matrícula", 
             width=200,
             max_length=8,
+            bgcolor=ft.Colors.WHITE,
             #input_filter=ft.NumbersOnlyInputFilter(),
             on_change=buscar_policial
         )
         policial = ft.TextField(
             label="QRA",
             width=200,
+            bgcolor=ft.Colors.WHITE,
             read_only=False,
         )
         nome = ft.TextField(
@@ -396,18 +398,37 @@ class CadastrarFeriasScreen(BaseScreen):
         periodo_aquisitivo = ft.TextField(
             label="Período Aquisitivo (ex: 2024/2025)",
             width=200,
+            bgcolor=ft.Colors.WHITE,
             hint_text="aaaa/aaaa",
             #input_filter=ft.NumbersOnlyInputFilter(),
             #max_length=4
         )
 
         # Campos de data
-        data_inicio1 = ft.TextField(label="Data Início", width=200, hint_text="dd/mm/aaaa")
-        data_fim1 = ft.TextField(label="Data Fim", width=200, hint_text="dd/mm/aaaa")
-        data_inicio2 = ft.TextField(label="Data Início", width=200, hint_text="dd/mm/aaaa")
-        data_fim2 = ft.TextField(label="Data Fim", width=200, hint_text="dd/mm/aaaa")
-        data_inicio3 = ft.TextField(label="Data Início", width=200, hint_text="dd/mm/aaaa")
-        data_fim3 = ft.TextField(label="Data Fim", width=200, hint_text="dd/mm/aaaa")
+        data_inicio1 = ft.TextField(label="Data Início",
+                                    width=200,
+                                    bgcolor=ft.Colors.WHITE,
+                                    hint_text="dd/mm/aaaa")
+        data_fim1 = ft.TextField(label="Data Fim",
+                                 width=200,
+                                 bgcolor=ft.Colors.WHITE,
+                                 hint_text="dd/mm/aaaa")
+        data_inicio2 = ft.TextField(label="Data Início",
+                                    width=200,
+                                    bgcolor=ft.Colors.WHITE,
+                                    hint_text="dd/mm/aaaa")
+        data_fim2 = ft.TextField(label="Data Fim",
+                                 width=200,
+                                 bgcolor=ft.Colors.WHITE,
+                                 hint_text="dd/mm/aaaa")
+        data_inicio3 = ft.TextField(label="Data Início",
+                                    width=200,
+                                    bgcolor=ft.Colors.WHITE,
+                                    hint_text="dd/mm/aaaa")
+        data_fim3 = ft.TextField(label="Data Fim",
+                                 bgcolor=ft.Colors.WHITE,
+                                 width=200,
+                                 hint_text="dd/mm/aaaa")
 
         # Configuração de localização para português do Brasil
         def configure_locale(page):
@@ -532,6 +553,7 @@ class CadastrarFeriasScreen(BaseScreen):
             text="Início P1",
             icon=ft.Icons.CALENDAR_MONTH,
             color=ft.Colors.BLACK,
+            bgcolor=ft.Colors.WHITE,
             style=ft.ButtonStyle(
                 shape=ft.RoundedRectangleBorder(radius=8),
                 side=ft.BorderSide(width=1, color=ft.Colors.BLACK)
@@ -544,6 +566,7 @@ class CadastrarFeriasScreen(BaseScreen):
             text="Fim P1",
             icon=ft.Icons.CALENDAR_MONTH,
             color=ft.Colors.BLACK,
+            bgcolor=ft.Colors.WHITE,
             style=ft.ButtonStyle(
                 shape=ft.RoundedRectangleBorder(radius=8),
                 side=ft.BorderSide(width=1, color=ft.Colors.BLACK)
@@ -556,6 +579,7 @@ class CadastrarFeriasScreen(BaseScreen):
             text="Início P2",
             icon=ft.Icons.CALENDAR_MONTH,
             color=ft.Colors.BLACK,
+            bgcolor=ft.Colors.WHITE,
             style=ft.ButtonStyle(
                 shape=ft.RoundedRectangleBorder(radius=8),
                 side=ft.BorderSide(width=1, color=ft.Colors.BLACK)
@@ -568,6 +592,7 @@ class CadastrarFeriasScreen(BaseScreen):
             text="Fim P2",
             icon=ft.Icons.CALENDAR_MONTH,
             color=ft.Colors.BLACK,
+            bgcolor=ft.Colors.WHITE,
             style=ft.ButtonStyle(
                 shape=ft.RoundedRectangleBorder(radius=8),
                 side=ft.BorderSide(width=1, color=ft.Colors.BLACK)
@@ -580,6 +605,7 @@ class CadastrarFeriasScreen(BaseScreen):
             text="Início P3",
             icon=ft.Icons.CALENDAR_MONTH,
             color=ft.Colors.BLACK,
+            bgcolor=ft.Colors.WHITE,
             style=ft.ButtonStyle(
                 shape=ft.RoundedRectangleBorder(radius=8),
                 side=ft.BorderSide(width=1, color=ft.Colors.BLACK)
@@ -592,6 +618,7 @@ class CadastrarFeriasScreen(BaseScreen):
             text="Fim P3",
             icon=ft.Icons.CALENDAR_MONTH,
             color=ft.Colors.BLACK,
+            bgcolor=ft.Colors.WHITE,
             style=ft.ButtonStyle(
                 shape=ft.RoundedRectangleBorder(radius=8),
                 side=ft.BorderSide(width=1, color=ft.Colors.BLACK)

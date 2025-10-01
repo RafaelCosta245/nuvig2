@@ -29,9 +29,15 @@ class ConsultarAusenciasScreen(BaseScreen):
             color=ft.Colors.BLACK,
             text_align=ft.TextAlign.CENTER,
         )
-        field_qra = ft.TextField(label="QRA", width=200)
-        field_policial = ft.TextField(label="Matrícula", width=200)
-        filtros_row = ft.Row([field_qra, field_policial], spacing=20, alignment=ft.MainAxisAlignment.CENTER)
+        field_qra = ft.TextField(label="QRA",
+                                 bgcolor=ft.Colors.WHITE,
+                                 width=200)
+        field_policial = ft.TextField(label="Matrícula",
+                                      bgcolor=ft.Colors.WHITE,
+                                      width=200)
+        filtros_row = ft.Row([field_qra, field_policial],
+                             spacing=20,
+                             alignment=ft.MainAxisAlignment.CENTER)
 
 
         # Controle para seleção única e cor de linha

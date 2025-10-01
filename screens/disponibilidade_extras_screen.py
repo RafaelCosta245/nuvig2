@@ -792,6 +792,8 @@ class DisponibilidadeExtrasScreen(BaseScreen):
             value=self.selected_opcao,
             width=180,
             on_change=atualizar_tabela,
+            filled=True,  # Precisa ser True para fill_color funcionar
+            fill_color=ft.Colors.WHITE,
         )
 
         def open_date_picker(e):
@@ -880,6 +882,8 @@ class DisponibilidadeExtrasScreen(BaseScreen):
             value=self.selected_interticio,
             width=180,
             on_change=atualizar_tabela,
+            filled=True,  # Precisa ser True para fill_color funcionar
+            fill_color=ft.Colors.WHITE,
         )
 
         row_dropdowns = ft.Row(

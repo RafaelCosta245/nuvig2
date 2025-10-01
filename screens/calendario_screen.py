@@ -258,6 +258,8 @@ class CalendarioScreen(BaseScreen):
 								plantao_list.append(nome)
 							elif status == "Compensação":
 								plantao_list.append(nome)  # Policiais de compensação também vão para plantão
+							elif status == "TAC":
+								plantao_list.append(nome)  # Policiais de TAC também vão para plantão
 							elif status == "Extra diurno":
 								extras_diurna_list.append(nome)
 							elif status == "Extra noturno":
@@ -752,7 +754,8 @@ class CalendarioScreen(BaseScreen):
 					"compensacao": "Compensação",
 					"permuta": "Permuta",
 					"extra_diurno": "Extra diurno",
-					"extra_noturno": "Extra noturno"
+					"extra_noturno": "Extra noturno",
+					"tac": "TAC"
 				}
 
 				# Construir estrutura JSON
@@ -1338,6 +1341,7 @@ class CalendarioScreen(BaseScreen):
 					"tipo": tipo,
 					"data_compensacao": policial.get("data_compensacao"),  # Para compensações
 					"data_a_compensar": policial.get("data_a_compensar"),  # Para compensações
+					"processo": policial.get("processo"),  # Para TACs
 				}
 			except Exception:
 				pass
@@ -1352,14 +1356,18 @@ class CalendarioScreen(BaseScreen):
 				"permuta": ft.Colors.GREY_400,  # Cinza - Permutas
 				"extra_diurno": ft.Colors.BLUE_200,  # Azul - Extra Diurno
 				"extra_noturno": ft.Colors.YELLOW,  # Índigo - Extra Noturno
+				"tac": ft.Colors.BLACK,  # Preto - TAC
 			}
 			bgcolor = cores.get(tipo, ft.Colors.LIGHT_GREEN)
+			
+			# Cor do texto: branco para TAC (fundo preto), preto para os demais
+			text_color = ft.Colors.WHITE if tipo == "tac" else ft.Colors.BLACK
 
 			return ft.Draggable(
 				group="policiais",
 				data=item_id,
 				content=ft.Container(
-					content=ft.Text(label, size=12, text_align=ft.TextAlign.CENTER, weight=ft.FontWeight.BOLD),
+					content=ft.Text(label, size=12, text_align=ft.TextAlign.CENTER, weight=ft.FontWeight.BOLD, color=text_color),
 					bgcolor=bgcolor,
 					padding=8,
 					border_radius=6,
@@ -2042,6 +2050,55 @@ class CalendarioScreen(BaseScreen):
 				print("[Extras] Erro ao aplicar extras:", ex)
 				return
 
+		# --- TACs: buscar policiais com TAC na data e adicionar aos acessos ---
+		def aplicar_tacs(data_ddmmyyyy: str):
+			try:
+				data_iso = ddmmyyyy_to_yyyymmdd(data_ddmmyyyy)
+				if not data_iso:
+					return
+				print(f"[TACs] Verificando TACs para data {data_iso}")
+
+				# Buscar TACs na data selecionada
+				rows = db.execute_query(
+					"SELECT policial_id, processo FROM tacs WHERE date(data) = date(?)",
+					(data_iso,)
+				)
+				print(f"[TACs] TACs encontrados: {len(rows)}")
+
+				for r in rows:
+					policial_id = r["policial_id"] if "policial_id" in r.keys() else None
+					processo = r["processo"] if "processo" in r.keys() else ""
+
+					if policial_id:
+						# Buscar dados do policial
+						pol_rows = db.execute_query("SELECT id, nome, qra FROM policiais WHERE id = ?", (policial_id,))
+						if pol_rows:
+							pol = pol_rows[0]
+							pol_data = {
+								"id": pol["id"] if "id" in pol.keys() else None,
+								"nome": pol["nome"] if "nome" in pol.keys() else None,
+								"qra": pol["qra"] if "qra" in pol.keys() else None,
+								"processo": processo,  # Armazenar processo para uso futuro
+							}
+
+							print(f"[TACs] TAC encontrado: {pol_data.get('qra') or pol_data.get('nome')} - Processo: {processo}")
+
+							# Distribuir entre acessos (similar à distribuição padrão)
+							# Prioridade: col1 (até 4), col3 (até 2), col2 (restante)
+							if len(col_items["col1"]) < 4:
+								col_items["col1"].append(make_draggable_policial(pol_data, "tac"))
+							elif len(col_items["col3"]) < 2:
+								col_items["col3"].append(make_draggable_policial(pol_data, "tac"))
+							else:
+								col_items["col2"].append(make_draggable_policial(pol_data, "tac"))
+
+							print(f"[TACs] Adicionado aos acessos: {pol_data.get('qra') or pol_data.get('nome')} (Processo: {processo})")
+
+				update_columns()
+			except Exception as ex:
+				print("[TACs] Erro ao aplicar TACs:", ex)
+				return
+
 		def preencher_coluna_obll(data_ddmmyyyy: str):
 			# limpa somente a coluna OBLL (col4)
 			col_items["col4"].clear()
@@ -2141,7 +2198,8 @@ class CalendarioScreen(BaseScreen):
 					"Compensação": "compensacao",
 					"Permuta": "permuta",
 					"Extra diurno": "extra_diurno",
-					"Extra noturno": "extra_noturno"
+					"Extra noturno": "extra_noturno",
+					"TAC": "tac"
 				}
 
 				# Mapear nomes das colunas para chaves
@@ -2221,6 +2279,8 @@ class CalendarioScreen(BaseScreen):
 			aplicar_permutas(data.value)
 			# Aplica extras: adiciona aos acessos com cores por turno
 			aplicar_extras(data.value)
+			# Aplica TACs: adiciona aos acessos com fundo preto e letra branca
+			aplicar_tacs(data.value)
 			# Aplica férias e licenças: movem de acessos para colunas específicas
 			aplicar_ferias(data.value)
 			aplicar_licencas(data.value)
@@ -2343,6 +2403,18 @@ class CalendarioScreen(BaseScreen):
 									weight=ft.FontWeight.BOLD,
 									color=ft.Colors.BLACK),
 					bgcolor=ft.Colors.BROWN_200,
+					width=120,
+					alignment=ft.alignment.center,
+					border_radius=4,
+					border=ft.border.all(1, ft.Colors.BLACK45)
+				),
+
+				ft.Container(
+					content=ft.Text(value="TAC",
+								size=12,
+								weight=ft.FontWeight.BOLD,
+								color=ft.Colors.WHITE),
+					bgcolor=ft.Colors.BLACK,
 					width=120,
 					alignment=ft.alignment.center,
 					border_radius=4,

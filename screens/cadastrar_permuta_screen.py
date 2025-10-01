@@ -298,18 +298,20 @@ class CadastrarPermutaScreen(BaseScreen):
         matricula_solicitante = ft.TextField(
             label="Matrícula Solicitante",
             width=200,
+            bgcolor=ft.Colors.WHITE,
             max_length=8,
             input_filter=ft.NumbersOnlyInputFilter(), 
             on_change=buscar_policial_solicitante
         )
         policial_solicitante = ft.TextField(
             label="QRA Solicitante",
+            bgcolor=ft.Colors.WHITE,
             width=200,
             read_only=False,
         )
         nome_solicitante = ft.TextField(
             label="Nome Solicitante", 
-            width=200, 
+            width=200,
             read_only=True,
             disabled=True,
             bgcolor=ft.Colors.GREY_100,
@@ -331,11 +333,13 @@ class CadastrarPermutaScreen(BaseScreen):
             label="Matrícula Permutado", 
             width=200,
             max_length=8,
+            bgcolor=ft.Colors.WHITE,
             input_filter=ft.NumbersOnlyInputFilter(), 
             on_change=buscar_policial_permutado
         )
         policial_permutado = ft.TextField(
             label="QRA Permutado",
+            bgcolor=ft.Colors.WHITE,
             width=200,
             read_only=False,
         )
@@ -359,8 +363,8 @@ class CadastrarPermutaScreen(BaseScreen):
         )
 
         # Campos de data
-        data1 = ft.TextField(label="Permuta De", width=200, hint_text="dd/mm/aaaa")
-        data2 = ft.TextField(label="Permuta Com", width=200, hint_text="dd/mm/aaaa")
+        data1 = ft.TextField(label="Permuta De", width=200, hint_text="dd/mm/aaaa", bgcolor=ft.Colors.WHITE)
+        data2 = ft.TextField(label="Permuta Com", width=200, hint_text="dd/mm/aaaa", bgcolor=ft.Colors.WHITE)
         
         # Função para aplicar máscara de data
         def mascara_data1(e):
@@ -447,6 +451,7 @@ class CadastrarPermutaScreen(BaseScreen):
             ),
             width=matricula_solicitante.width,
             height=matricula_solicitante.height,
+            bgcolor=ft.Colors.WHITE,
             on_click=open_date_picker1
         )
         
@@ -490,6 +495,7 @@ class CadastrarPermutaScreen(BaseScreen):
             ),
             width=matricula_solicitante.width,
             height=matricula_solicitante.height,
+            bgcolor=ft.Colors.WHITE,
             on_click=open_date_picker2
         )
 
