@@ -6,7 +6,6 @@ import os
 from datetime import datetime, timedelta
 
 from .base_screen import BaseScreen
-import datetime
 from database.database_manager import DatabaseManager
 
 # Imports para PDF
@@ -223,18 +222,13 @@ class CalendarioScreen(BaseScreen):
 					Paragraph("SECRETARIA DA ADMINISTRAÇÃO PENITENCIÁRIA E RESSOCIALIZAÇÃO", subtitle_style))
 				elements.append(Spacer(1, 0.5 * cm))
 
-				# Converter data para formato brasileiro e obter dia da semana
-				try:
-					data_obj = datetime.strptime(data_ddmmyyyy, "%d/%m/%Y")
-					dias_semana = ["Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira",
-								   "Sábado", "Domingo"]
-					dia_semana = dias_semana[data_obj.weekday()]
-				except:
-					dia_semana = ""
-
 				# Título da escala
 				elements.append(Paragraph(f"EQUIPE DELTA", title_style))
-				elements.append(Paragraph(f"{dia_semana} - {data_ddmmyyyy}", subtitle_style))
+				# Usar o dia da semana já calculado
+				if dia_semana_atual:
+					elements.append(Paragraph(f"{dia_semana_atual} - {data_ddmmyyyy}", subtitle_style))
+				else:
+					elements.append(Paragraph(f"- {data_ddmmyyyy}", subtitle_style))
 				elements.append(Spacer(1, 0.8 * cm))
 
 				# Tabela principal - Plantão e Extras
@@ -1066,8 +1060,8 @@ class CalendarioScreen(BaseScreen):
 			page.open(datepicker)
 
 		datepicker = ft.DatePicker(
-			first_date=datetime.datetime(2020, 1, 1),
-			last_date=datetime.datetime(2030, 12, 31),
+			first_date=datetime(2020, 1, 1),
+			last_date=datetime(2030, 12, 31),
 		)
 
 		# Tenta anexar o datepicker ao overlay ao montar a tela
@@ -1079,6 +1073,25 @@ class CalendarioScreen(BaseScreen):
 
 		weekday = ""
 		equipe = ""
+		dia_semana_atual = ""  # Variável para armazenar o dia da semana atual
+
+		def atualizar_dia_semana():
+			"""Atualiza o dia da semana baseado no valor atual de data.value"""
+			nonlocal dia_semana_atual
+			try:
+				if data.value and len(data.value) == 10:
+					# Converter dd/mm/yyyy para objeto datetime
+					dia, mes, ano = data.value.split("/")
+					data_obj = datetime(int(ano), int(mes), int(dia))
+					dias_semana = ["Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo"]
+					dia_semana_atual = dias_semana[data_obj.weekday()]
+					print(f"[Dia Semana] Atualizado para: {dia_semana_atual} ({data.value})")
+				else:
+					dia_semana_atual = ""
+					print(f"[Dia Semana] Data inválida: {data.value}")
+			except Exception as ex:
+				dia_semana_atual = ""
+				print(f"[Dia Semana] Erro ao calcular: {ex}")
 
 		# --- Helpers de data ---
 		def ddmmyyyy_to_yyyymmdd(s: str) -> str:
@@ -1103,7 +1116,7 @@ class CalendarioScreen(BaseScreen):
 			if not s or len(s) != 10:
 				return False
 			try:
-				datetime.datetime.strptime(s, "%d/%m/%Y")
+				datetime.strptime(s, "%d/%m/%Y")
 				return True
 			except ValueError:
 				return False
@@ -1173,12 +1186,14 @@ class CalendarioScreen(BaseScreen):
 					nonlocal weekday, equipe
 					# Converter para objeto date e obter nome do dia da semana
 					try:
-						_date_obj = datetime.datetime.strptime(novo_valor, "%d/%m/%Y").date()
+						_date_obj = datetime.strptime(novo_valor, "%d/%m/%Y").date()
 						weekday = pt_weekdays[_date_obj.weekday()]
 					except Exception:
 						weekday = ""
 					equipe = equipe_result
 					team_text.value = f"{weekday} - Equipe {equipe}"
+					# Atualizar dia da semana para o PDF
+					atualizar_dia_semana()
 					# Atualiza a tabela dinâmica
 					try:
 						refresh_tabela_para_data_atual()
@@ -1186,7 +1201,12 @@ class CalendarioScreen(BaseScreen):
 						pass
 			e.control.page.update()
 
-		data = ft.TextField(label="Data", width=btn_data.width, hint_text="dd/mm/aaaa", bgcolor=ft.Colors.WHITE)
+		data = ft.TextField(
+			label="Data", 
+			width=btn_data.width, 
+			hint_text="dd/mm/aaaa", 
+			bgcolor=ft.Colors.WHITE
+		)
 		data.on_change = mascara_data
 
 		team_text = ft.Text(
@@ -1349,14 +1369,17 @@ class CalendarioScreen(BaseScreen):
 
 		# Inicializa com a data de hoje e atualiza equipe/weekday (nome do dia)
 		try:
-			today = datetime.date.today()
+			today = datetime.now().date()
 			weekday = pt_weekdays[today.weekday()]
 			data.value = today.strftime("%d/%m/%Y")
 			query_date = today.strftime("%Y-%m-%d")
 			equipe = db.get_equipe_by_data(query_date) or ""
 			team_text.value = f"{weekday} - Equipe {equipe}"
-		except Exception:
-			pass
+			# Atualizar dia da semana para o PDF
+			atualizar_dia_semana()
+			print(f"[Inicialização] Data: {data.value}, Equipe: {equipe}, Dia: {weekday}")
+		except Exception as ex:
+			print(f"[Inicialização] Erro: {ex}")
 
 		btn_save = ft.ElevatedButton(
 			text="Salvar",
@@ -1547,7 +1570,7 @@ class CalendarioScreen(BaseScreen):
 				return []
 			# Converter data para objeto date
 			try:
-				data_sel = datetime.datetime.strptime(data_ddmmyyyy, "%d/%m/%Y").date()
+				data_sel = datetime.strptime(data_ddmmyyyy, "%d/%m/%Y").date()
 			except Exception:
 				return []
 			# Consulta: todos NUVIG, decidimos por lógica de fase da escala (suporta dias consecutivos p/ AB/ABC)
@@ -1563,7 +1586,7 @@ class CalendarioScreen(BaseScreen):
 				if not inicio_str:
 					continue
 				try:
-					inicio_date = datetime.datetime.strptime(inicio_str, "%Y-%m-%d").date()
+					inicio_date = datetime.strptime(inicio_str, "%Y-%m-%d").date()
 				except Exception:
 					continue
 				delta = (data_sel - inicio_date).days
@@ -1644,7 +1667,7 @@ class CalendarioScreen(BaseScreen):
 					try:
 						if not s:
 							return None
-						return datetime.datetime.strptime(str(s).strip()[:10], "%Y-%m-%d").date()
+						return datetime.strptime(str(s).strip()[:10], "%Y-%m-%d").date()
 					except Exception:
 						return None
 
@@ -1787,7 +1810,7 @@ class CalendarioScreen(BaseScreen):
 					try:
 						if not s:
 							return None
-						return datetime.datetime.strptime(str(s).strip()[:10], "%Y-%m-%d").date()
+						return datetime.strptime(str(s).strip()[:10], "%Y-%m-%d").date()
 					except Exception:
 						return None
 
@@ -2543,6 +2566,8 @@ class CalendarioScreen(BaseScreen):
 			aplicar_licencas(data.value)
 			# Preenche OBLL para a data
 			preencher_coluna_obll(data.value)
+			# Atualizar dia da semana para o PDF
+			atualizar_dia_semana()
 			try:
 				if self.page:
 					self.page.update()
