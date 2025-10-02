@@ -261,15 +261,33 @@ class CalendarioScreen(BaseScreen):
 							nome = pol.get("nome", "")
 							status = pol.get("status", "")
 							permuta_info = pol.get("permuta_info")
+							compensacao_info = pol.get("compensacao_info")
+							tac_info = pol.get("tac_info")
 							
-							print(f"[DEBUG PDF] Policial: {nome}, Status: {status}, Permuta Info: {permuta_info}")
+							print(f"[DEBUG PDF] Policial: {nome}, Status: {status}, Permuta Info: {permuta_info}, Compensação Info: {compensacao_info}, TAC Info: {tac_info}")
 							
 							if status == "Plantão":
 								plantao_list.append(nome)
 							elif status == "Compensação":
-								plantao_list.append(nome)  # Policiais de compensação também vão para plantão
+								# Verificar se há informações de compensação
+								print(f"[DEBUG PDF] Processando compensação para {nome}")
+								if compensacao_info and compensacao_info.get("tipo") == "trabalha":
+									nome_com_anotacao = f"{nome} (CP. {compensacao_info.get('data_compensada', 'N/A')})"
+									print(f"[DEBUG PDF] Nome com anotação COMPENSAÇÃO: {nome_com_anotacao}")
+								else:
+									nome_com_anotacao = nome
+									print(f"[DEBUG PDF] Nome sem anotação: {nome_com_anotacao}")
+								plantao_list.append(nome_com_anotacao)  # Policiais de compensação também vão para plantão
 							elif status == "TAC":
-								plantao_list.append(nome)  # Policiais de TAC também vão para plantão
+								# Verificar se há informações de TAC
+								print(f"[DEBUG PDF] Processando TAC para {nome}")
+								if tac_info:
+									nome_com_anotacao = f"{nome} (TAC)"
+									print(f"[DEBUG PDF] Nome com anotação TAC: {nome_com_anotacao}")
+								else:
+									nome_com_anotacao = nome
+									print(f"[DEBUG PDF] Nome sem anotação: {nome_com_anotacao}")
+								plantao_list.append(nome_com_anotacao)  # Policiais de TAC também vão para plantão
 							elif status == "Permuta":
 								# Verificar se há informações de permuta
 								print(f"[DEBUG PDF] Processando permuta para {nome}")
@@ -312,8 +330,8 @@ class CalendarioScreen(BaseScreen):
 					""
 				])
 
-				# Criar tabela principal
-				tabela_principal = Table(tabela_principal_data, colWidths=[3 * cm, 5 * cm, 4 * cm, 4 * cm])
+				# Criar tabela principal - Aumentando largura da coluna PLANTÃO e diminuindo as outras
+				tabela_principal = Table(tabela_principal_data, colWidths=[2.5 * cm, 6.5 * cm, 3.5 * cm, 3.5 * cm])
 				tabela_principal.setStyle(TableStyle([
 					('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
 					('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
@@ -359,8 +377,9 @@ class CalendarioScreen(BaseScreen):
 						nome = pol.get("nome", "")
 						status = pol.get("status", "")
 						permuta_info = pol.get("permuta_info")
+						compensacao_info = pol.get("compensacao_info")
 						
-						print(f"[DEBUG PDF] Ausente: {nome}, Status: {status}, Permuta Info: {permuta_info}")
+						print(f"[DEBUG PDF] Ausente: {nome}, Status: {status}, Permuta Info: {permuta_info}, Compensação Info: {compensacao_info}")
 						
 						# Verificar se é ausente por permuta
 						if status == "Permuta":
@@ -368,6 +387,16 @@ class CalendarioScreen(BaseScreen):
 							if permuta_info and permuta_info.get("tipo") == "sai":
 								nome_com_anotacao = f"{nome} (PERM.)"
 								print(f"[DEBUG PDF] Nome com anotação SAI: {nome_com_anotacao}")
+							else:
+								nome_com_anotacao = nome
+								print(f"[DEBUG PDF] Nome sem anotação: {nome_com_anotacao}")
+							ausentes_list.append(nome_com_anotacao)
+						# Verificar se é ausente por compensação
+						elif status == "Compensação":
+							print(f"[DEBUG PDF] Processando ausente por compensação: {nome}")
+							if compensacao_info and compensacao_info.get("tipo") == "ausente":
+								nome_com_anotacao = f"{nome} (CP. {compensacao_info.get('data_trabalhada', 'N/A')})"
+								print(f"[DEBUG PDF] Nome com anotação COMPENSAÇÃO: {nome_com_anotacao}")
 							else:
 								nome_com_anotacao = nome
 								print(f"[DEBUG PDF] Nome sem anotação: {nome_com_anotacao}")
@@ -880,10 +909,26 @@ class CalendarioScreen(BaseScreen):
 							permuta_info = policial_info.get("permuta_info")
 							print(f"[DEBUG SALVAR] Permuta info para {nome}: {permuta_info}")
 						
+						# Verificar se é compensação e buscar informações adicionais do id_map
+						compensacao_info = None
+						if tipo == "compensacao":
+							print(f"[DEBUG SALVAR] Policial {nome} é compensação, buscando info no id_map...")
+							compensacao_info = policial_info.get("compensacao_info")
+							print(f"[DEBUG SALVAR] Compensação info para {nome}: {compensacao_info}")
+						
+						# Verificar se é TAC e buscar informações adicionais do id_map
+						tac_info = None
+						if tipo == "tac":
+							print(f"[DEBUG SALVAR] Policial {nome} é TAC, buscando info no id_map...")
+							tac_info = policial_info.get("tac_info")
+							print(f"[DEBUG SALVAR] TAC info para {nome}: {tac_info}")
+						
 						policial_data = {
 							"nome": nome,
 							"status": status,
-							"permuta_info": permuta_info
+							"permuta_info": permuta_info,
+							"compensacao_info": compensacao_info,
+							"tac_info": tac_info
 						}
 						print(f"[DEBUG SALVAR] Adicionando à coluna {col_name}: {policial_data}")
 						dados[col_name].append(policial_data)
@@ -1041,6 +1086,15 @@ class CalendarioScreen(BaseScreen):
 				parts = s.split("/")
 				if len(parts) == 3 and all(parts):
 					return f"{parts[2]}-{parts[1]}-{parts[0]}"
+				return ""
+			except Exception:
+				return ""
+
+		def yyyymmdd_to_ddmmyyyy(s: str) -> str:
+			try:
+				parts = s.split("-")
+				if len(parts) == 3 and all(parts):
+					return f"{parts[2]}/{parts[1]}/{parts[0]}"
 				return ""
 			except Exception:
 				return ""
@@ -1858,12 +1912,28 @@ class CalendarioScreen(BaseScreen):
 							}
 							# Distribuir entre acessos (similar à distribuição padrão)
 							# Prioridade: col1 (até 4), col3 (até 2), col2 (restante)
+							compensacao_item = make_draggable_policial(pol_data, "compensacao")
 							if len(col_items["col1"]) < 4:
-								col_items["col1"].append(make_draggable_policial(pol_data, "compensacao"))
+								col_items["col1"].append(compensacao_item)
 							elif len(col_items["col3"]) < 2:
-								col_items["col3"].append(make_draggable_policial(pol_data, "compensacao"))
+								col_items["col3"].append(compensacao_item)
 							else:
-								col_items["col2"].append(make_draggable_policial(pol_data, "compensacao"))
+								col_items["col2"].append(compensacao_item)
+							
+							# Armazenar informação de compensação no id_map (trabalha hoje, compensa outro dia)
+							comp_key = getattr(compensacao_item, "data", "")
+							print(f"[DEBUG COMPENSACAO] Armazenando info para compensacao key: {comp_key}")
+							if comp_key in id_map:
+								# Converter data_a_compensar para formato dd/mm/yyyy
+								data_a_compensar_br = yyyymmdd_to_ddmmyyyy(pol_data.get('data_a_compensar', ''))
+								id_map[comp_key]["compensacao_info"] = {
+									"tipo": "trabalha",
+									"data_compensada": data_a_compensar_br
+								}
+								print(f"[DEBUG COMPENSACAO] Info armazenada para {pol_data.get('qra')}: {id_map[comp_key]['compensacao_info']}")
+							else:
+								print(f"[DEBUG COMPENSACAO] Key {comp_key} não encontrada no id_map")
+							
 							print(
 								f"[Compensações] Adicionado aos acessos: {pol_data.get('qra') or pol_data.get('nome')}")
 
@@ -1911,7 +1981,23 @@ class CalendarioScreen(BaseScreen):
 								"data_a_compensar": r["a_compensar"] if "a_compensar" in r.keys() else None,
 							}
 							# Adicionar à coluna Ausências
-							col_items["col7"].append(make_draggable_policial(pol_data, "compensacao"))
+							ausencia_item = make_draggable_policial(pol_data, "compensacao")
+							col_items["col7"].append(ausencia_item)
+							
+							# Armazenar informação de compensação no id_map (ausente hoje, trabalhou outro dia)
+							aus_key = getattr(ausencia_item, "data", "")
+							print(f"[DEBUG COMPENSACAO] Armazenando info para ausencia key: {aus_key}")
+							if aus_key in id_map:
+								# Converter data_compensacao para formato dd/mm/yyyy
+								data_compensacao_br = yyyymmdd_to_ddmmyyyy(pol_data.get('data_compensacao', ''))
+								id_map[aus_key]["compensacao_info"] = {
+									"tipo": "ausente",
+									"data_trabalhada": data_compensacao_br
+								}
+								print(f"[DEBUG COMPENSACAO] Info armazenada para {pol_data.get('qra')}: {id_map[aus_key]['compensacao_info']}")
+							else:
+								print(f"[DEBUG COMPENSACAO] Key {aus_key} não encontrada no id_map")
+							
 							print(
 								f"[Compensações] Adicionado às ausências: {pol_data.get('qra') or pol_data.get('nome')}")
 
@@ -2243,12 +2329,24 @@ class CalendarioScreen(BaseScreen):
 
 							# Distribuir entre acessos (similar à distribuição padrão)
 							# Prioridade: col1 (até 4), col3 (até 2), col2 (restante)
+							tac_item = make_draggable_policial(pol_data, "tac")
 							if len(col_items["col1"]) < 4:
-								col_items["col1"].append(make_draggable_policial(pol_data, "tac"))
+								col_items["col1"].append(tac_item)
 							elif len(col_items["col3"]) < 2:
-								col_items["col3"].append(make_draggable_policial(pol_data, "tac"))
+								col_items["col3"].append(tac_item)
 							else:
-								col_items["col2"].append(make_draggable_policial(pol_data, "tac"))
+								col_items["col2"].append(tac_item)
+
+							# Armazenar informação de TAC no id_map
+							tac_key = getattr(tac_item, "data", "")
+							print(f"[DEBUG TAC] Armazenando info para TAC key: {tac_key}")
+							if tac_key in id_map:
+								id_map[tac_key]["tac_info"] = {
+									"processo": processo
+								}
+								print(f"[DEBUG TAC] Info armazenada para {pol_data.get('qra')}: {id_map[tac_key]['tac_info']}")
+							else:
+								print(f"[DEBUG TAC] Key {tac_key} não encontrada no id_map")
 
 							print(
 								f"[TACs] Adicionado aos acessos: {pol_data.get('qra') or pol_data.get('nome')} (Processo: {processo})")
