@@ -45,7 +45,7 @@ class CalendarioScreen(BaseScreen):
 		def exportar_pdf(e):
 			try:
 				print("[PDF] Iniciando exportação de PDF...")
-				
+
 				# Verificar se temos data válida
 				if not data.value or len(data.value) != 10:
 					print("[PDF] Erro: Data inválida")
@@ -56,7 +56,7 @@ class CalendarioScreen(BaseScreen):
 						e
 					)
 					return
-				
+
 				data_iso = ddmmyyyy_to_yyyymmdd(data.value)
 				if not data_iso:
 					print("[PDF] Erro: Não foi possível converter data")
@@ -67,12 +67,12 @@ class CalendarioScreen(BaseScreen):
 						e
 					)
 					return
-				
+
 				print(f"[PDF] Verificando se existe escala para {data_iso}")
-				
+
 				# Verificar se existe escala para esta data
 				existing = db.execute_query("SELECT escala FROM calendario WHERE data = ?", (data_iso,))
-				
+
 				if not existing or len(existing) == 0:
 					show_alert_dialog(
 						"Nenhuma Escala Encontrada",
@@ -81,7 +81,7 @@ class CalendarioScreen(BaseScreen):
 						e
 					)
 					return
-				
+
 				# Verificar se a escala não está vazia
 				try:
 					row = existing[0]
@@ -89,7 +89,7 @@ class CalendarioScreen(BaseScreen):
 				except:
 					row = existing[0]
 					escala_json = row[0]
-				
+
 				if not escala_json:
 					show_alert_dialog(
 						"Escala Vazia",
@@ -98,9 +98,9 @@ class CalendarioScreen(BaseScreen):
 						e
 					)
 					return
-				
+
 				print(f"[PDF] Escala encontrada, gerando PDF...")
-				
+
 				# Fazer parse do JSON
 				try:
 					dados_escala = json.loads(escala_json)
@@ -113,7 +113,7 @@ class CalendarioScreen(BaseScreen):
 						e
 					)
 					return
-				
+
 				# Determinar diretório de saída a partir do banco (roots.save_path) ou app.output_dir
 				output_dir = None
 				try:
@@ -130,23 +130,23 @@ class CalendarioScreen(BaseScreen):
 				except Exception as config_ex:
 					print(f"[PDF] Falha ao obter diretório de saída (roots.save_path): {config_ex}")
 					output_dir = os.getcwd()
-				
+
 				# Gerar nome do arquivo
 				data_formatada = data.value.replace("/", "-")
 				nome_arquivo = f"Escala_{data_formatada}.pdf"
 				caminho_pdf = os.path.join(output_dir, nome_arquivo)
-				
+
 				# Garantir que o diretório exista
 				try:
 					os.makedirs(output_dir, exist_ok=True)
 				except Exception as mk_ex:
 					print(f"[PDF] Aviso: não foi possível criar diretório de saída '{output_dir}': {mk_ex}")
-				
+
 				print(f"[PDF] Gerando PDF: {caminho_pdf}")
-				
+
 				# Gerar o PDF
 				_gerar_pdf_escala(dados_escala, data.value, caminho_pdf, equipe)
-				
+
 				print(f"[PDF] ✓ PDF gerado com sucesso: {caminho_pdf}")
 				show_alert_dialog(
 					"PDF Gerado com Sucesso",
@@ -154,7 +154,7 @@ class CalendarioScreen(BaseScreen):
 					True,
 					e
 				)
-				
+
 			except Exception as ex:
 				print(f"[PDF] Erro ao exportar PDF: {ex}")
 				import traceback
@@ -165,23 +165,27 @@ class CalendarioScreen(BaseScreen):
 					False,
 					e
 				)
-		
+
 		def _gerar_pdf_escala(dados_escala, data_ddmmyyyy, caminho_pdf, equipe_letra):
 			"""Gera o PDF da escala baseado no template da imagem"""
 			try:
+				print(f"[DEBUG PDF] Iniciando geração de PDF")
+				print(f"[DEBUG PDF] Dados da escala recebidos:")
+				import json
+				print(json.dumps(dados_escala, ensure_ascii=False, indent=2))
 				# Criar documento PDF
 				doc = SimpleDocTemplate(
 					caminho_pdf,
 					pagesize=A4,
-					rightMargin=1*cm,
-					leftMargin=1*cm,
-					topMargin=1*cm,
-					bottomMargin=1*cm
+					rightMargin=1 * cm,
+					leftMargin=1 * cm,
+					topMargin=1 * cm,
+					bottomMargin=1 * cm
 				)
-				
+
 				# Lista para armazenar elementos do PDF
 				elements = []
-				
+
 				# Estilos
 				styles = getSampleStyleSheet()
 				title_style = ParagraphStyle(
@@ -192,7 +196,7 @@ class CalendarioScreen(BaseScreen):
 					alignment=TA_CENTER,
 					fontName='Helvetica-Bold'
 				)
-				
+
 				subtitle_style = ParagraphStyle(
 					'CustomSubtitle',
 					parent=styles['Normal'],
@@ -201,58 +205,64 @@ class CalendarioScreen(BaseScreen):
 					alignment=TA_CENTER,
 					fontName='Helvetica-Bold'
 				)
-				
+
 				# Adicionar logo se existir
 				logo_path = "assets/icons/ceara.png"
 				if os.path.exists(logo_path):
 					try:
-						logo = Image(logo_path, width=3*cm, height=3*cm)
+						logo = Image(logo_path, width=3 * cm, height=3 * cm)
 						logo.hAlign = 'CENTER'
 						elements.append(logo)
-						elements.append(Spacer(1, 0.5*cm))
+						elements.append(Spacer(1, 0.5 * cm))
 					except Exception as logo_ex:
 						print(f"[PDF] Erro ao carregar logo: {logo_ex}")
-				
+
 				# Cabeçalho
 				elements.append(Paragraph("GOVERNO DO ESTADO DO CEARÁ", title_style))
-				elements.append(Paragraph("SECRETARIA DA ADMINISTRAÇÃO PENITENCIÁRIA E RESSOCIALIZAÇÃO", subtitle_style))
-				elements.append(Spacer(1, 0.5*cm))
-				
+				elements.append(
+					Paragraph("SECRETARIA DA ADMINISTRAÇÃO PENITENCIÁRIA E RESSOCIALIZAÇÃO", subtitle_style))
+				elements.append(Spacer(1, 0.5 * cm))
+
 				# Converter data para formato brasileiro e obter dia da semana
 				try:
 					data_obj = datetime.strptime(data_ddmmyyyy, "%d/%m/%Y")
-					dias_semana = ["Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo"]
+					dias_semana = ["Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira",
+								   "Sábado", "Domingo"]
 					dia_semana = dias_semana[data_obj.weekday()]
 				except:
 					dia_semana = ""
-				
+
 				# Título da escala
 				elements.append(Paragraph(f"EQUIPE DELTA", title_style))
 				elements.append(Paragraph(f"{dia_semana} - {data_ddmmyyyy}", subtitle_style))
-				elements.append(Spacer(1, 0.8*cm))
-				
+				elements.append(Spacer(1, 0.8 * cm))
+
 				# Tabela principal - Plantão e Extras
 				tabela_principal_data = []
-				
+
 				# Cabeçalho da tabela principal
 				tabela_principal_data.append([
 					"", "PLANTÃO", "EXTRAS DIURNA", "EXTRAS NOTURNA"
 				])
-				
+
 				# Dados dos acessos
 				acessos = ["ACESSO 1", "ACESSO 2", "ACESSO 3"]
 				colunas_acesso = ["Acesso 01", "Acesso 02", "Acesso 03"]
-				
+
 				for i, (acesso_nome, coluna_nome) in enumerate(zip(acessos, colunas_acesso)):
 					plantao_list = []
 					extras_diurna_list = []
 					extras_noturna_list = []
-					
+
 					# Buscar policiais do plantão (acesso)
 					if coluna_nome in dados_escala:
+						print(f"[DEBUG PDF] Processando coluna {coluna_nome}")
 						for pol in dados_escala[coluna_nome]:
 							nome = pol.get("nome", "")
 							status = pol.get("status", "")
+							permuta_info = pol.get("permuta_info")
+							
+							print(f"[DEBUG PDF] Policial: {nome}, Status: {status}, Permuta Info: {permuta_info}")
 							
 							if status == "Plantão":
 								plantao_list.append(nome)
@@ -260,40 +270,50 @@ class CalendarioScreen(BaseScreen):
 								plantao_list.append(nome)  # Policiais de compensação também vão para plantão
 							elif status == "TAC":
 								plantao_list.append(nome)  # Policiais de TAC também vão para plantão
+							elif status == "Permuta":
+								# Verificar se há informações de permuta
+								print(f"[DEBUG PDF] Processando permuta para {nome}")
+								if permuta_info and permuta_info.get("tipo") == "entra":
+									nome_com_anotacao = f"{nome} (P.O. {permuta_info.get('com', 'N/A')})"
+									print(f"[DEBUG PDF] Nome com anotação ENTRA: {nome_com_anotacao}")
+								else:
+									nome_com_anotacao = nome
+									print(f"[DEBUG PDF] Nome sem anotação: {nome_com_anotacao}")
+								plantao_list.append(nome_com_anotacao)  # Policiais de permuta também vão para plantão
 							elif status == "Extra diurno":
 								extras_diurna_list.append(nome)
 							elif status == "Extra noturno":
 								extras_noturna_list.append(nome)
-					
+
 					# Formatar listas
-					plantao_text = "\n".join([f"{j+1}. {nome}" for j, nome in enumerate(plantao_list)])
-					extras_diurna_text = "\n".join([f"{j+1}. {nome}" for j, nome in enumerate(extras_diurna_list)])
-					extras_noturna_text = "\n".join([f"{j+1}. {nome}" for j, nome in enumerate(extras_noturna_list)])
-					
+					plantao_text = "\n".join([f"{j + 1}. {nome}" for j, nome in enumerate(plantao_list)])
+					extras_diurna_text = "\n".join([f"{j + 1}. {nome}" for j, nome in enumerate(extras_diurna_list)])
+					extras_noturna_text = "\n".join([f"{j + 1}. {nome}" for j, nome in enumerate(extras_noturna_list)])
+
 					tabela_principal_data.append([
 						acesso_nome,
 						plantao_text,
 						extras_diurna_text,
 						extras_noturna_text
 					])
-				
+
 				# Adicionar linha OBLL
 				obll_list = []
 				if "OBLL" in dados_escala:
 					for pol in dados_escala["OBLL"]:
 						nome = pol.get("nome", "")
 						obll_list.append(nome)
-				
-				obll_text = "\n".join([f"{j+1}. {nome}" for j, nome in enumerate(obll_list)])
+
+				obll_text = "\n".join([f"{j + 1}. {nome}" for j, nome in enumerate(obll_list)])
 				tabela_principal_data.append([
 					"OBLL",
 					obll_text,
 					"",
 					""
 				])
-				
+
 				# Criar tabela principal
-				tabela_principal = Table(tabela_principal_data, colWidths=[3*cm, 5*cm, 4*cm, 4*cm])
+				tabela_principal = Table(tabela_principal_data, colWidths=[3 * cm, 5 * cm, 4 * cm, 4 * cm])
 				tabela_principal.setStyle(TableStyle([
 					('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
 					('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
@@ -306,51 +326,69 @@ class CalendarioScreen(BaseScreen):
 					('GRID', (0, 0), (-1, -1), 1, colors.black),
 					('VALIGN', (0, 0), (-1, -1), 'TOP'),
 				]))
-				
+
 				elements.append(tabela_principal)
-				elements.append(Spacer(1, 0.5*cm))
-				
+				elements.append(Spacer(1, 0.5 * cm))
+
 				# Tabela secundária - Férias, Licenças, Ausentes
 				tabela_secundaria_data = []
-				
+
 				# Cabeçalho da tabela secundária
 				tabela_secundaria_data.append([
 					"FÉRIAS", "LICENÇAS", "AUSENTES"
 				])
-				
+
 				# Dados
 				ferias_list = []
 				licencas_list = []
 				ausentes_list = []
-				
+
 				if "Férias" in dados_escala:
 					for pol in dados_escala["Férias"]:
 						nome = pol.get("nome", "")
 						ferias_list.append(nome)
-				
+
 				if "Licenças" in dados_escala:
 					for pol in dados_escala["Licenças"]:
 						nome = pol.get("nome", "")
 						licencas_list.append(nome)
-				
+
 				if "Ausências" in dados_escala:
+					print(f"[DEBUG PDF] Processando Ausências")
 					for pol in dados_escala["Ausências"]:
 						nome = pol.get("nome", "")
-						ausentes_list.append(nome)
-				
+						status = pol.get("status", "")
+						permuta_info = pol.get("permuta_info")
+						
+						print(f"[DEBUG PDF] Ausente: {nome}, Status: {status}, Permuta Info: {permuta_info}")
+						
+						# Verificar se é ausente por permuta
+						if status == "Permuta":
+							print(f"[DEBUG PDF] Processando ausente por permuta: {nome}")
+							if permuta_info and permuta_info.get("tipo") == "sai":
+								nome_com_anotacao = f"{nome} (PERM.)"
+								print(f"[DEBUG PDF] Nome com anotação SAI: {nome_com_anotacao}")
+							else:
+								nome_com_anotacao = nome
+								print(f"[DEBUG PDF] Nome sem anotação: {nome_com_anotacao}")
+							ausentes_list.append(nome_com_anotacao)
+						else:
+							ausentes_list.append(nome)
+
 				# Formatar listas
-				ferias_text = "\n".join([f"{j+1}. {nome}" for j, nome in enumerate(ferias_list)])
-				licencas_text = "\n".join([f"{j+1}. {nome}" for j, nome in enumerate(licencas_list)])
-				ausentes_text = "\n".join([f"{j+1}. {nome}" for j, nome in enumerate(ausentes_list)])
-				
+				ferias_text = "\n".join([f"{j + 1}. {nome}" for j, nome in enumerate(ferias_list)])
+				licencas_text = "\n".join([f"{j + 1}. {nome}" for j, nome in enumerate(licencas_list)])
+				ausentes_text = "\n".join([f"{j + 1}. {nome}" for j, nome in enumerate(ausentes_list)])
+
 				tabela_secundaria_data.append([
 					ferias_text,
 					licencas_text,
 					ausentes_text
 				])
-				
+
 				# Criar tabela secundária
-				tabela_secundaria = Table(tabela_secundaria_data, colWidths=[5.3*cm, 5.3*cm, 5.3*cm], rowHeights=[0.8*cm, 3*cm])
+				tabela_secundaria = Table(tabela_secundaria_data, colWidths=[5.3 * cm, 5.3 * cm, 5.3 * cm],
+										  rowHeights=[0.8 * cm, 3 * cm])
 				tabela_secundaria.setStyle(TableStyle([
 					('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
 					('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
@@ -365,21 +403,19 @@ class CalendarioScreen(BaseScreen):
 					('GRID', (0, 0), (-1, -1), 1, colors.black),
 					('VALIGN', (0, 0), (-1, -1), 'TOP'),
 				]))
-				
+
 				elements.append(tabela_secundaria)
-				elements.append(Spacer(1, 0.8*cm))
-				
+				elements.append(Spacer(1, 0.8 * cm))
+
 				# Observações (similar ao template)
 				obs_data = [
 					["OBS 01", "OBS 02", "OBS 03"],
 					[
-						"ACESSO 01: A Viatura do ESTÊNIO GOMES tem que ser devolvida após cada rendição feita 🚗",
-						"Os Policiais que são de outras unidades que estiverem de ABONO devem se apresentar com uniforme padrão, preto e GANDOLA. 🚔\nchapéu panamá preto (no caso de abono diurno) 🧢🧢🧢",
 						""
 					]
 				]
-				
-				tabela_obs = Table(obs_data, colWidths=[5.3*cm, 5.3*cm, 5.3*cm], rowHeights=[0.8*cm, 2.5*cm])
+
+				tabela_obs = Table(obs_data, colWidths=[5.3 * cm, 5.3 * cm, 5.3 * cm], rowHeights=[0.8 * cm, 2.5 * cm])
 				tabela_obs.setStyle(TableStyle([
 					('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
 					('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
@@ -396,13 +432,13 @@ class CalendarioScreen(BaseScreen):
 					('GRID', (0, 0), (-1, -1), 1, colors.black),
 					('VALIGN', (0, 0), (-1, -1), 'TOP'),
 				]))
-				
+
 				elements.append(tabela_obs)
-				
+
 				# Gerar o PDF
 				doc.build(elements)
 				print(f"[PDF] ✓ PDF gerado com sucesso: {caminho_pdf}")
-				
+
 			except Exception as ex:
 				print(f"[PDF] Erro ao gerar PDF: {ex}")
 				raise ex
@@ -716,6 +752,57 @@ class CalendarioScreen(BaseScreen):
 				import traceback
 				traceback.print_exc()
 
+		def _buscar_info_permuta(policial_id: str, data_iso: str):
+			"""Busca informações de permuta para um policial em uma data específica"""
+			try:
+				print(f"[DEBUG PERMUTA] Buscando permuta para policial_id: {policial_id}, data: {data_iso}")
+				
+				if not policial_id or not data_iso:
+					print(f"[DEBUG PERMUTA] Parâmetros inválidos: policial_id={policial_id}, data_iso={data_iso}")
+					return None
+				
+				# Buscar permutas onde este policial é solicitante (sai na data)
+				rows_solicitante = db.execute_query(
+					"SELECT permutado FROM permutas WHERE solicitante = ? AND data_solicitante = ?",
+					(policial_id, data_iso)
+				)
+				print(f"[DEBUG PERMUTA] Rows solicitante: {rows_solicitante}")
+				
+				if rows_solicitante and len(rows_solicitante) > 0:
+					permutado_id = rows_solicitante[0]["permutado"] if "permutado" in rows_solicitante[0].keys() else rows_solicitante[0][0]
+					print(f"[DEBUG PERMUTA] Permutado ID: {permutado_id}")
+					# Buscar nome do permutado
+					perm_rows = db.execute_query("SELECT nome, qra FROM policiais WHERE id = ?", (permutado_id,))
+					if perm_rows and len(perm_rows) > 0:
+						permutado_nome = perm_rows[0]["qra"] if "qra" in perm_rows[0].keys() else perm_rows[0]["nome"]
+						resultado = {"tipo": "sai", "com": permutado_nome}
+						print(f"[DEBUG PERMUTA] Resultado SAI: {resultado}")
+						return resultado
+				
+				# Buscar permutas onde este policial é permutado (entra na data)
+				rows_permutado = db.execute_query(
+					"SELECT solicitante FROM permutas WHERE permutado = ? AND data_permutado = ?",
+					(policial_id, data_iso)
+				)
+				print(f"[DEBUG PERMUTA] Rows permutado: {rows_permutado}")
+				
+				if rows_permutado and len(rows_permutado) > 0:
+					solicitante_id = rows_permutado[0]["solicitante"] if "solicitante" in rows_permutado[0].keys() else rows_permutado[0][0]
+					print(f"[DEBUG PERMUTA] Solicitante ID: {solicitante_id}")
+					# Buscar nome do solicitante
+					sol_rows = db.execute_query("SELECT nome, qra FROM policiais WHERE id = ?", (solicitante_id,))
+					if sol_rows and len(sol_rows) > 0:
+						solicitante_nome = sol_rows[0]["qra"] if "qra" in sol_rows[0].keys() else sol_rows[0]["nome"]
+						resultado = {"tipo": "entra", "com": solicitante_nome}
+						print(f"[DEBUG PERMUTA] Resultado ENTRA: {resultado}")
+						return resultado
+				
+				print(f"[DEBUG PERMUTA] Nenhuma permuta encontrada para {policial_id}")
+				return None
+			except Exception as ex:
+				print(f"[Permuta Info] Erro ao buscar info de permuta: {ex}")
+				return None
+
 		def salvar_escala(e):
 			try:
 				print("Salvando escala...")
@@ -784,10 +871,22 @@ class CalendarioScreen(BaseScreen):
 						tipo = policial_info.get("tipo", "padrao")
 						status = tipo_para_status.get(tipo, "Plantão")
 
-						dados[col_name].append({
+						print(f"[DEBUG SALVAR] Processando {nome}: item_data={item_data}, tipo={tipo}, status={status}")
+
+						# Verificar se é permuta e buscar informações adicionais do id_map
+						permuta_info = None
+						if tipo == "permuta":
+							print(f"[DEBUG SALVAR] Policial {nome} é permuta, buscando info no id_map...")
+							permuta_info = policial_info.get("permuta_info")
+							print(f"[DEBUG SALVAR] Permuta info para {nome}: {permuta_info}")
+						
+						policial_data = {
 							"nome": nome,
-							"status": status
-						})
+							"status": status,
+							"permuta_info": permuta_info
+						}
+						print(f"[DEBUG SALVAR] Adicionando à coluna {col_name}: {policial_data}")
+						dados[col_name].append(policial_data)
 
 				# Converter para JSON string
 				import json
@@ -1359,7 +1458,7 @@ class CalendarioScreen(BaseScreen):
 				"tac": ft.Colors.BLACK,  # Preto - TAC
 			}
 			bgcolor = cores.get(tipo, ft.Colors.LIGHT_GREEN)
-			
+
 			# Cor do texto: branco para TAC (fundo preto), preto para os demais
 			text_color = ft.Colors.WHITE if tipo == "tac" else ft.Colors.BLACK
 
@@ -1367,7 +1466,8 @@ class CalendarioScreen(BaseScreen):
 				group="policiais",
 				data=item_id,
 				content=ft.Container(
-					content=ft.Text(label, size=12, text_align=ft.TextAlign.CENTER, weight=ft.FontWeight.BOLD, color=text_color),
+					content=ft.Text(label, size=12, text_align=ft.TextAlign.CENTER, weight=ft.FontWeight.BOLD,
+									color=text_color),
 					bgcolor=bgcolor,
 					padding=8,
 					border_radius=6,
@@ -1505,7 +1605,8 @@ class CalendarioScreen(BaseScreen):
 					print("[Férias] Sem equipe definida para a data; nada a aplicar.")
 					return
 
-				print(f"[Férias] Verificando férias para data {data_iso} ({data_sel}) considerando equipe '{equipe_atual}' pela 1ª letra da escala")
+				print(
+					f"[Férias] Verificando férias para data {data_iso} ({data_sel}) considerando equipe '{equipe_atual}' pela 1ª letra da escala")
 
 				# Buscar todos os policiais NUVIG cuja primeira letra da escala == equipe do dia
 				rows_pol = db.execute_query(
@@ -1570,8 +1671,8 @@ class CalendarioScreen(BaseScreen):
 				for r in rows:
 					pid = rg(r, "policial_id")
 					if in_range(data_sel, rg(r, "inicio1"), rg(r, "fim1")) or \
-					   in_range(data_sel, rg(r, "inicio2"), rg(r, "fim2")) or \
-					   in_range(data_sel, rg(r, "inicio3"), rg(r, "fim3")):
+							in_range(data_sel, rg(r, "inicio2"), rg(r, "fim2")) or \
+							in_range(data_sel, rg(r, "inicio3"), rg(r, "fim3")):
 						ferias_ids.add(pid)
 						print(f"[Férias] Policial em férias na data {data_iso}: pid={pid}")
 
@@ -1928,17 +2029,45 @@ class CalendarioScreen(BaseScreen):
 					col_items[key].remove(it)
 
 			# Adicionar solicitante às ausências
-			col_items["col7"].append(make_draggable_policial(solicitante_data, "permuta"))
+			solicitante_item = make_draggable_policial(solicitante_data, "permuta")
+			col_items["col7"].append(solicitante_item)
+			
+			# Armazenar informação de permuta no id_map para o solicitante (sai)
+			solicitante_key = getattr(solicitante_item, "data", "")
+			print(f"[DEBUG PERMUTA] Armazenando info para solicitante key: {solicitante_key}")
+			if solicitante_key in id_map:
+				id_map[solicitante_key]["permuta_info"] = {
+					"tipo": "sai",
+					"com": permutado_data.get('qra') or permutado_data.get('nome')
+				}
+				print(f"[DEBUG PERMUTA] Info armazenada para {solicitante_data.get('qra')}: {id_map[solicitante_key]['permuta_info']}")
+			else:
+				print(f"[DEBUG PERMUTA] Key {solicitante_key} não encontrada no id_map")
+			
 			print(
 				f"[Permutas] Solicitante adicionado às ausências: {solicitante_data.get('qra') or solicitante_data.get('nome')}")
 
 			# Adicionar permutado aos acessos
+			permutado_item = make_draggable_policial(permutado_data, "permuta")
 			if len(col_items["col1"]) < 4:
-				col_items["col1"].append(make_draggable_policial(permutado_data, "permuta"))
+				col_items["col1"].append(permutado_item)
 			elif len(col_items["col3"]) < 2:
-				col_items["col3"].append(make_draggable_policial(permutado_data, "permuta"))
+				col_items["col3"].append(permutado_item)
 			else:
-				col_items["col2"].append(make_draggable_policial(permutado_data, "permuta"))
+				col_items["col2"].append(permutado_item)
+			
+			# Armazenar informação de permuta no id_map para o permutado (entra)
+			permutado_key = getattr(permutado_item, "data", "")
+			print(f"[DEBUG PERMUTA] Armazenando info para permutado key: {permutado_key}")
+			if permutado_key in id_map:
+				id_map[permutado_key]["permuta_info"] = {
+					"tipo": "entra",
+					"com": solicitante_data.get('qra') or solicitante_data.get('nome')
+				}
+				print(f"[DEBUG PERMUTA] Info armazenada para {permutado_data.get('qra')}: {id_map[permutado_key]['permuta_info']}")
+			else:
+				print(f"[DEBUG PERMUTA] Key {permutado_key} não encontrada no id_map")
+			
 			print(
 				f"[Permutas] Permutado adicionado aos acessos: {permutado_data.get('qra') or permutado_data.get('nome')}")
 
@@ -1976,17 +2105,45 @@ class CalendarioScreen(BaseScreen):
 					col_items[key].remove(it)
 
 			# Adicionar permutado às ausências
-			col_items["col7"].append(make_draggable_policial(permutado_data, "permuta"))
+			permutado_item = make_draggable_policial(permutado_data, "permuta")
+			col_items["col7"].append(permutado_item)
+			
+			# Armazenar informação de permuta no id_map para o permutado (sai)
+			permutado_key = getattr(permutado_item, "data", "")
+			print(f"[DEBUG PERMUTA] Armazenando info para permutado key: {permutado_key}")
+			if permutado_key in id_map:
+				id_map[permutado_key]["permuta_info"] = {
+					"tipo": "sai",
+					"com": solicitante_data.get('qra') or solicitante_data.get('nome')
+				}
+				print(f"[DEBUG PERMUTA] Info armazenada para {permutado_data.get('qra')}: {id_map[permutado_key]['permuta_info']}")
+			else:
+				print(f"[DEBUG PERMUTA] Key {permutado_key} não encontrada no id_map")
+			
 			print(
 				f"[Permutas] Permutado adicionado às ausências: {permutado_data.get('qra') or permutado_data.get('nome')}")
 
 			# Adicionar solicitante aos acessos
+			solicitante_item = make_draggable_policial(solicitante_data, "permuta")
 			if len(col_items["col1"]) < 4:
-				col_items["col1"].append(make_draggable_policial(solicitante_data, "permuta"))
+				col_items["col1"].append(solicitante_item)
 			elif len(col_items["col3"]) < 2:
-				col_items["col3"].append(make_draggable_policial(solicitante_data, "permuta"))
+				col_items["col3"].append(solicitante_item)
 			else:
-				col_items["col2"].append(make_draggable_policial(solicitante_data, "permuta"))
+				col_items["col2"].append(solicitante_item)
+			
+			# Armazenar informação de permuta no id_map para o solicitante (entra)
+			solicitante_key = getattr(solicitante_item, "data", "")
+			print(f"[DEBUG PERMUTA] Armazenando info para solicitante key: {solicitante_key}")
+			if solicitante_key in id_map:
+				id_map[solicitante_key]["permuta_info"] = {
+					"tipo": "entra",
+					"com": permutado_data.get('qra') or permutado_data.get('nome')
+				}
+				print(f"[DEBUG PERMUTA] Info armazenada para {solicitante_data.get('qra')}: {id_map[solicitante_key]['permuta_info']}")
+			else:
+				print(f"[DEBUG PERMUTA] Key {solicitante_key} não encontrada no id_map")
+			
 			print(
 				f"[Permutas] Solicitante adicionado aos acessos: {solicitante_data.get('qra') or solicitante_data.get('nome')}")
 
@@ -2081,7 +2238,8 @@ class CalendarioScreen(BaseScreen):
 								"processo": processo,  # Armazenar processo para uso futuro
 							}
 
-							print(f"[TACs] TAC encontrado: {pol_data.get('qra') or pol_data.get('nome')} - Processo: {processo}")
+							print(
+								f"[TACs] TAC encontrado: {pol_data.get('qra') or pol_data.get('nome')} - Processo: {processo}")
 
 							# Distribuir entre acessos (similar à distribuição padrão)
 							# Prioridade: col1 (até 4), col3 (até 2), col2 (restante)
@@ -2092,7 +2250,8 @@ class CalendarioScreen(BaseScreen):
 							else:
 								col_items["col2"].append(make_draggable_policial(pol_data, "tac"))
 
-							print(f"[TACs] Adicionado aos acessos: {pol_data.get('qra') or pol_data.get('nome')} (Processo: {processo})")
+							print(
+								f"[TACs] Adicionado aos acessos: {pol_data.get('qra') or pol_data.get('nome')} (Processo: {processo})")
 
 				update_columns()
 			except Exception as ex:
@@ -2411,9 +2570,9 @@ class CalendarioScreen(BaseScreen):
 
 				ft.Container(
 					content=ft.Text(value="TAC",
-								size=12,
-								weight=ft.FontWeight.BOLD,
-								color=ft.Colors.WHITE),
+									size=12,
+									weight=ft.FontWeight.BOLD,
+									color=ft.Colors.WHITE),
 					bgcolor=ft.Colors.BLACK,
 					width=120,
 					alignment=ft.alignment.center,
